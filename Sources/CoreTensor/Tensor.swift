@@ -2,7 +2,7 @@
 //  Tensor.swift
 //  CoreTensor
 //
-//  Copyright 2016-2017 DLVM Team.
+//  Copyright 2016-2017 The DLVM Team.
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -17,54 +17,9 @@
 //  limitations under the License.
 //
 
-public protocol TensorProtocol: RandomAccessCollection
-    where IndexDistance == Int, Index == Int,
-Element: TensorProtocol, Element.UnitType == UnitType {
-    associatedtype UnitType
-    associatedtype UnitSequenceType: RandomAccessCollection
-        where UnitSequenceType.Iterator.Element == UnitType,
-              UnitSequenceType.Index == Int,
-              UnitSequenceType.IndexDistance == Int
-    var units: UnitSequenceType { get }
-    var unitCountPerElement: IndexDistance { get }
-    var elementShape: TensorShape? { get }
-    subscript(index: Index) -> TensorSlice<UnitType> { get }
-    subscript(index: TensorIndex) -> TensorSlice<UnitType> { get }
-}
-
-public extension TensorProtocol {
-    var shape: TensorShape {
-        return elementShape?.prepending(count) ?? .scalar
-    }
-
-    var unitCount: Int {
-        return units.count
-    }
-
-    func unit(at index: Int) -> UnitType {
-        return units[units.startIndex.advanced(by: index)]
-    }
-
-    func unit(at index: TensorIndex) -> UnitType {
-        return self[index].units[0]
-    }
-}
-
-internal extension TensorProtocol {
-    func unitIndex(fromIndex index: Int) -> Int {
-        return unitCountPerElement * index
-    }
-
-    func unitSubrange(from tensorSubrange: CountableRange<Int>) -> CountableRange<Int> {
-        return unitIndex(fromIndex: tensorSubrange.lowerBound)
-           ..< unitIndex(fromIndex: tensorSubrange.upperBound)
-    }
-}
-
 /// Tensor
-public struct Tensor<DataType> : TensorProtocol {
-    public typealias UnitType = DataType
-    public typealias UnitSequenceType = ContiguousArray<UnitType>
+public struct Tensor<UnitType> : TensorProtocol {
+    public typealias Shape = TensorShape
 
     /// Element tensor shape
     public let elementShape: TensorShape?
@@ -79,7 +34,9 @@ public struct Tensor<DataType> : TensorProtocol {
     }
 
     /// Contiguous storage
-    public internal(set) var units: ContiguousArray<UnitType>
+    // NOTE: access modifier changed for TensorKit
+    // public internal(set) var units: ContiguousArray<UnitType>
+    public var units: ContiguousArray<UnitType>
 
     /// Capacity reserved for subtensors
     public var capacity: Int {
@@ -93,7 +50,9 @@ public struct Tensor<DataType> : TensorProtocol {
         self.elementShape = elementShape
         self.units = ContiguousArray(units)
     }
+}
 
+public extension Tensor {
     /// Initialize a tensor using an existing slice of elements in row-major order
     /// - parameter shape: tensor shape
     /// - parameter elements: slice of existing elements in row-major order
@@ -105,51 +64,51 @@ public struct Tensor<DataType> : TensorProtocol {
     }
 
     /// Initialize an empty tensor of scalar elements
-    public init() {
+    init() {
         self.init(elementShape: .scalar)
     }
 
     /// Initialize an empty tensor
-    public init(elementShape: TensorShape) {
+    init(elementShape: TensorShape) {
         self.init(elementShape: elementShape, units: [])
     }
 
     /// Initialize a scalar tensor
-    public init(scalar: UnitType) {
+    init(scalar: UnitType) {
         self.init(elementShape: nil, units: [scalar])
     }
 
     /// Initialize a tensor from a sequence of tensors of element shape
-    public init<S: Sequence>(elementShape: TensorShape, elements: S)
+    init<S: Sequence>(elementShape: TensorShape, elements: S)
         where S.Element : TensorProtocol, S.Element.UnitType == UnitType {
-        self.init(elementShape: elementShape)
-        for element in elements {
-            units.append(contentsOf: element.units)
-        }
+            self.init(elementShape: elementShape)
+            for element in elements {
+                units.append(contentsOf: element.units)
+            }
     }
 
     /// Initialize a tensor from a sequence of elements in row-major order
     /// - parameter shape: tensor shape
     /// - parameter elements: sequence of elements in row-major order
     /// - parameter vacancySupplier
-    public init<S: Sequence>(shape: TensorShape, units: S,
-                             vacancySupplier supplier: (() -> UnitType)? = nil)
+    init<S: Sequence>(shape: TensorShape, units: S,
+                      vacancySupplier supplier: (() -> UnitType)? = nil)
         where S.Iterator.Element == UnitType {
-        let contiguousSize = shape.contiguousSize
-        var slice = ContiguousArray(units.prefix(contiguousSize))
-        /// If elements fewer than required by the shape and supplier is provided
-        /// generate new elements using the supplier until vacancy is filled
-        if slice.count < contiguousSize, let supplier = supplier {
-            slice.reserveCapacity(shape.contiguousSize)
-            slice.append(contentsOf: (0..<contiguousSize).map { _ in supplier() })
-        }
-        self.init(shape: shape, units: slice)
+            let contiguousSize = shape.contiguousSize
+            var slice = ContiguousArray(units.prefix(contiguousSize))
+            /// If elements fewer than required by the shape and supplier is provided
+            /// generate new elements using the supplier until vacancy is filled
+            if slice.count < contiguousSize, let supplier = supplier {
+                slice.reserveCapacity(shape.contiguousSize)
+                slice.append(contentsOf: (0..<contiguousSize).map { _ in supplier() })
+            }
+            self.init(shape: shape, units: slice)
     }
 
     /// Allocate and initialize a tensor to a repeated value
     /// - parameter shape: tensor shape
     /// - parameter repeating: repeated value
-    public init(shape: TensorShape, repeating repeatedValue: UnitType) {
+    init(shape: TensorShape, repeating repeatedValue: UnitType) {
         let units = ContiguousArray(repeating: repeatedValue, count: shape.contiguousSize)
         self.init(shape: shape, units: units)
     }
@@ -157,46 +116,19 @@ public struct Tensor<DataType> : TensorProtocol {
     /// Allocate and initialize a tensor using the factory function
     /// - parameter shape: tensor shape
     /// - parameter supplier: factory function providing values lazily
-    public init(shape: TensorShape, supplier: () -> UnitType) {
+    init(shape: TensorShape, supplier: () -> UnitType) {
         let units = ContiguousArray((0..<shape.contiguousSize).map { _ in supplier() })
         self.init(shape: shape, units: units)
     }
 
     /// Initialize a tensor from a TensorSlice
-    public init(_ slice: TensorSlice<UnitType>) {
+    init(_ slice: TensorSlice<UnitType>) {
         self.init(elementShape: slice.elementShape, units: ContiguousArray(slice.units))
     }
 }
 
-/// - TODO: Add conditional expressibility conformance in Swift 4
-
-public extension Tensor where UnitType : Equatable {
-    public static func ==(lhs: Tensor<UnitType>, rhs: Tensor<UnitType>) -> Bool {
-        return lhs.elementsEqual(rhs)
-    }
-
-    public func elementsEqual(_ other: Tensor<UnitType>) -> Bool {
-        guard shape == other.shape else { return false }
-        return shape.elementsEqual(other.shape) && units.elementsEqual(other.units)
-    }
-
-    public func unitsEqual(_ other: Tensor<UnitType>) -> Bool {
-        return units.elementsEqual(other.units)
-    }
-}
-
-public extension TensorProtocol {
-    public func isSimilar(to other: Self) -> Bool {
-        return shape ~ other.shape
-    }
-
-    public func isIsomorphic(to other: Self) -> Bool {
-        return shape == other.shape
-    }
-}
-
-extension Tensor where UnitType : Strideable {
-    public init(shape: TensorShape, unitsIncreasingFrom lowerBound: UnitType) {
+public extension Tensor where UnitType : Strideable {
+    init(shape: TensorShape, unitsIncreasingFrom lowerBound: UnitType) {
         var unit = lowerBound
         self.init(shape: shape, supplier: {
             defer { unit = unit.advanced(by: 1) }
@@ -205,12 +137,12 @@ extension Tensor where UnitType : Strideable {
     }
 }
 
-extension Tensor where UnitType : Strideable, UnitType.Stride : SignedInteger {
-    public init(scalarElementsIn bounds: CountableRange<UnitType>) {
+public extension Tensor where UnitType : Strideable, UnitType.Stride : SignedInteger {
+    init(scalarElementsIn bounds: CountableRange<UnitType>) {
         self.init(elementShape: .scalar, units: ContiguousArray(bounds))
     }
 
-    public init(scalarElementsIn bounds: CountableClosedRange<UnitType>) {
+    init(scalarElementsIn bounds: CountableClosedRange<UnitType>) {
         self.init(elementShape: .scalar, units: ContiguousArray(bounds))
     }
 }
@@ -251,7 +183,7 @@ public extension Tensor where UnitType : FloatingPoint {
     }
 }
 
-extension Tensor : RandomAccessCollection {
+extension Tensor : RandomAccessCollection, RangeReplaceableCollection {
     public typealias Index = Int
     public typealias Element = TensorSlice<UnitType>
     public typealias SubSequence = TensorSlice<UnitType>
@@ -350,7 +282,7 @@ extension Tensor : RandomAccessCollection {
 }
 
 public extension Tensor {
-    public func reshaped(as newShape: TensorShape) -> Tensor? {
+    func reshaped(as newShape: TensorShape) -> Tensor? {
         guard self.shape.contiguousSize == newShape.contiguousSize else {
             return nil
         }

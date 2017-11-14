@@ -2,7 +2,7 @@
 //  TensorTests.swift
 //  RankedTensor
 //
-//  Copyright 2016-2017 DLVM Team.
+//  Copyright 2016-2017 The DLVM Team.
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -68,9 +68,8 @@ class RankedTensorTests: XCTestCase {
     func testEquality() {
         let highTensor = Tensor3D<Int>(shape: (1, 4, 3), repeating: 0)
         let lowTensor = Tensor2D<Int>(shape: (4, 3), repeating: 0)
-        XCTAssertTrue(highTensor.unitsEqual(lowTensor))
+        XCTAssertTrue(highTensor.units == lowTensor.units)
         XCTAssertFalse(highTensor.elementsEqual(lowTensor))
-        XCTAssertFalse(highTensor == lowTensor)
         XCTAssertFalse(highTensor.isIsomorphic(to: lowTensor))
     }
 
@@ -136,6 +135,12 @@ class RankedTensorTests: XCTestCase {
         XCTAssertEqual("\(rank3)", "[[[1, 2], [3, 4], [5, 6]], [[7, 8], [9, 10], [11, 12]]]")
     }
 
+    func testLiteralConversion() {
+        let t1: Tensor2D = [[1], [2], [3]]
+        XCTAssertEqual(t1.dynamicShape, [3, 1])
+        XCTAssertEqual(t1.units, [1, 2, 3])
+    }
+
     static var allTests: [(String, (RankedTensorTests) -> () throws -> Void)] {
         return [
             ("testInit", testInit),
@@ -144,8 +149,10 @@ class RankedTensorTests: XCTestCase {
             ("testEquality", testEquality),
             ("testMutating", testMutating),
             ("testSlicing", testSlicing),
+            ("testLiteralConversion", testLiteralConversion),
             ("testTextOutput", testTextOutput),
         ]
     }
 
 }
+

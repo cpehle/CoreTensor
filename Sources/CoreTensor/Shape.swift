@@ -2,7 +2,7 @@
 //  Shape.swift
 //  CoreTensor
 //
-//  Copyright 2016-2017 Richard Wei.
+//  Copyright 2016-2017 The DLVM Team.
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -21,8 +21,9 @@
 public struct TensorShape: ExpressibleByArrayLiteral {
     public typealias SubSequence = TensorShape
 
-    /// NOTE: Temporarily changed access from fileprivate to public for use
+    // NOTE: Temporarily changed access from fileprivate to public for use
     /// with RankedTensor.
+    // TODO: Change dimensions from [Int] to [UInt], non-trivial breaking change
     public var dimensions: [Int]
 
     /// Initialize with rank, and set the size of each dimension to 1.

@@ -2,7 +2,7 @@
 //  Slice.swift
 //  CoreTensor
 //
-//  Copyright 2016-2017 DLVM Team.
+//  Copyright 2016-2017 The DLVM Team.
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -19,11 +19,117 @@
 
 /// Tensor slice
 public struct TensorSlice<UnitType> : TensorProtocol {
+    public typealias Shape = TensorShape
     public typealias Base = Tensor<UnitType>
 
     public private(set) var base: Base
     private var baseIndices: [Int]
     private var bounds: CountableRange<Int>?
+
+    private init(base: Tensor<UnitType>, baseIndices indices: [Int], bounds: CountableRange<Int>?) {
+        precondition(zip(base.shape, indices).forAll { $1 >= 0 && $1 < $0 },
+                     "Element indices are out of bounds")
+        self.base = base
+        self.baseIndices = indices
+        self.bounds = bounds
+    }
+}
+
+public extension TensorSlice {
+    init(_ base: Tensor<UnitType>) {
+        self.init(base: base, baseIndices: [], bounds: nil)
+    }
+
+    init(base: Tensor<UnitType>, bounds: CountableRange<Int>?) {
+        self.init(base: base, baseIndices: [], bounds: bounds)
+    }
+
+    init(base: TensorSlice, bounds: CountableRange<Int>?) {
+        if let bounds = bounds {
+            precondition(base.indices.contains(bounds.startIndex)
+                && base.indices.contains(bounds.endIndex - 1),
+                         "Slice is out of bounds")
+        }
+        self.init(base: base.base, baseIndices: base.baseIndices, bounds: bounds)
+    }
+
+    init(base: Tensor<UnitType>, indices: [Int]) {
+        self.init(base: base, baseIndices: indices, bounds: nil)
+    }
+
+    init(base: TensorSlice, indices: [Int]) {
+        self.init(base: base.base, baseIndices: base.baseIndices + indices, bounds: nil)
+    }
+
+    init(base: Tensor<UnitType>, index: Int) {
+        self.init(base: base, indices: [index])
+    }
+
+    init(base: TensorSlice, index: Int) {
+        self.init(base: base.base, indices: base.baseIndices + [index])
+    }
+
+    init(_ base: TensorSlice<UnitType>) {
+        self.init(base: base, bounds: base.indices)
+    }
+
+    internal init(elementShape: TensorShape?, units: ContiguousArray<UnitType>) {
+        self.init(Tensor(elementShape: elementShape, units: units))
+    }
+
+    /// Initialize a tensor using an existing slice of elements in row-major order
+    /// - parameter shape: tensor shape
+    /// - parameter elements: slice of existing elements in row-major order
+    fileprivate init(shape: TensorShape, units: ContiguousArray<UnitType>) {
+        self.init(Tensor(shape: shape, units: units))
+    }
+
+    /// Initialize an empty tensor of scalar elements
+    init() {
+        self.init(Tensor())
+    }
+
+    /// Initialize an empty tensor
+    init(elementShape: TensorShape) {
+        self.init(Tensor(elementShape: elementShape))
+    }
+
+    /// Initialize a scalar tensor
+    init(scalar: UnitType) {
+        self.init(Tensor(scalar: scalar))
+    }
+
+    /// Initialize a tensor from a sequence of tensors of element shape
+    init<S: Sequence>(elementShape: TensorShape, elements: S)
+        where S.Element : TensorProtocol, S.Element.UnitType == UnitType
+    {
+        self.init(Tensor(elementShape: elementShape, elements: elements))
+    }
+
+    /// Initialize a tensor from a sequence of elements in row-major order
+    /// - parameter shape: tensor shape
+    /// - parameter elements: sequence of elements in row-major order
+    /// - parameter vacancySupplier
+    init<S: Sequence>(shape: TensorShape, units: S,
+                             vacancySupplier supplier: (() -> UnitType)? = nil)
+        where S.Iterator.Element == UnitType
+    {
+        self.init(Tensor(shape: shape, units: units, vacancySupplier: supplier))
+    }
+
+    /// Allocate and initialize a tensor to a repeated value
+    /// - parameter shape: tensor shape
+    /// - parameter repeating: repeated value
+    init(shape: TensorShape, repeating repeatedValue: UnitType) {
+        self.init(Tensor(shape: shape, repeating: repeatedValue))
+    }
+
+    /// Allocate and initialize a tensor using the factory function
+    /// - parameter shape: tensor shape
+    /// - parameter supplier: factory function providing values lazily
+    init(shape: TensorShape, supplier: () -> UnitType) {
+        self.init(Tensor(shape: shape, supplier: supplier))
+    }
 }
 
 public extension TensorSlice {
@@ -52,7 +158,7 @@ public extension TensorSlice {
         return elementShape?.contiguousSize ?? 0
     }
 
-    var units: ArraySlice<UnitType> {
+    var unitRange: CountableRange<Int> {
         let trimmedShape = base.shape.dropFirst()
         var (start, end) = baseIndices.enumerated().reduce((0, base.unitCount), { (acc, next) in
             let stride = trimmedShape.dropFirst(next.offset).reduce(1, *)
@@ -67,8 +173,16 @@ public extension TensorSlice {
             (start, end) = (start + bounds.startIndex * stride,
                             start + bounds.endIndex * stride)
         }
-        let range = start..<end
-        return base.units[range]
+        return start..<end
+    }
+
+    var units: ArraySlice<UnitType> {
+        get {
+            return base.units[unitRange]
+        }
+        set(newUnits) {
+            base.units[unitRange] = newUnits
+        }
     }
 
     var indices: CountableRange<Int> {
@@ -94,183 +208,18 @@ public extension TensorSlice {
     }
 }
 
-public extension TensorSlice {
-    init(base: Tensor<UnitType>, bounds: CountableRange<Int>?) {
-        if let bounds = bounds {
-            precondition(base.indices ~= bounds.startIndex
-                         && base.indices ~= bounds.endIndex - 1,
-                         "Slice is out of bounds")
-        }
-        self.base = base
-        self.baseIndices = []
-        self.bounds = bounds
-    }
-
-    init(base: TensorSlice<UnitType>, bounds: CountableRange<Int>?) {
-        if let bounds = bounds {
-            precondition(base.indices ~= bounds.startIndex
-                         && base.indices ~= bounds.endIndex - 1,
-                         "Slice is out of bounds")
-        }
-        self.base = base.base
-        self.baseIndices = base.baseIndices
-        self.bounds = bounds
-    }
-
-    init(base: Tensor<UnitType>, index: Int) {
-        precondition(!base.isScalar,
-                     "A scalar has no elements")
-        precondition(base.indices ~= index,
-                     "Element index is out of bounds")
-        self.base = base
-        self.baseIndices = [index]
-        self.bounds = nil
-    }
-
-    init(base: TensorSlice<UnitType>, index: Int) {
-        precondition(!base.isScalar,
-                     "A scalar has no elements")
-        precondition(base.indices ~= index,
-                     "Element index is out of bounds")
-        self.base = base.base
-        self.baseIndices = base.baseIndices + [index]
-        self.bounds = nil
-    }
-
-    init(base: Tensor<UnitType>, indices: [Int]) {
-        precondition(!base.isScalar,
-                     "A scalar has no elements")
-        precondition(zip(base.shape, indices).filter { !($1 >= 0 && $1 < $0) }.count == 0,
-                     "Element indices are out of bounds")
-        self.base = base
-        self.baseIndices = indices
-        self.bounds = nil
-    }
-
-    init(base: TensorSlice<UnitType>, indices: [Int]) {
-        precondition(!base.isScalar,
-                     "A scalar has no elements")
-        precondition(zip(base.shape, indices).filter { !($1 >= 0 && $1 < $0) }.count == 0,
-                     "Element indices are out of bounds")
-        self.base = base.base
-        self.baseIndices = base.baseIndices + indices
-        self.bounds = nil
-    }
-
-    init(_ base: Tensor<UnitType>) {
-        self.init(base: base, bounds: base.indices)
-    }
-
-    init(_ base: TensorSlice<UnitType>) {
-        self.init(base: base, bounds: base.indices)
-    }
-
-    internal init(elementShape: TensorShape?, units: ContiguousArray<UnitType>) {
-        let base = Tensor<UnitType>(elementShape: elementShape, units: units)
-        self.init(base: base, bounds: base.indices)
-    }
-
-    /// Initialize a tensor using an existing slice of elements in row-major order
-    /// - parameter shape: tensor shape
-    /// - parameter elements: slice of existing elements in row-major order
-    fileprivate init(shape: TensorShape, units: ContiguousArray<UnitType>) {
-        precondition(units.count >= shape.contiguousSize,
-                     "The slice has fewer elements than required by the shape")
-        self.init(elementShape: shape.isScalar ? nil : shape.dropFirst(),
-                  units: ContiguousArray(units.prefix(shape.contiguousSize)))
-    }
-
-    /// Initialize an empty tensor of scalar elements
-    public init() {
-        self.init(elementShape: .scalar)
-    }
-
-    /// Initialize an empty tensor
-    public init(elementShape: TensorShape) {
-        self.init(elementShape: elementShape, units: [])
-    }
-
-    /// Initialize a scalar tensor
-    public init(scalar: UnitType) {
-        self.init(elementShape: nil, units: [scalar])
-    }
-
-    /// Initialize a tensor from a sequence of tensors of element shape
-    public init<S: Sequence>(elementShape: TensorShape, elements: S)
-        where S.Element : TensorProtocol, S.Element.UnitType == UnitType {
-        let newBase = Tensor<UnitType>(elementShape: elementShape,
-                                       elements: elements)
-        self.init(base: newBase, bounds: newBase.indices)
-    }
-
-    /// Initialize a tensor from a sequence of elements in row-major order
-    /// - parameter shape: tensor shape
-    /// - parameter elements: sequence of elements in row-major order
-    /// - parameter vacancySupplier
-    public init<S: Sequence>(shape: TensorShape, units: S,
-                             vacancySupplier supplier: (() -> UnitType)? = nil)
-        where S.Iterator.Element == UnitType {
-            let contiguousSize = shape.contiguousSize
-            var slice = ContiguousArray(units.prefix(contiguousSize))
-            /// If elements fewer than required by the shape and supplier is provided
-            /// generate new elements using the supplier until vacancy is filled
-            if slice.count < contiguousSize, let supplier = supplier {
-                slice.reserveCapacity(shape.contiguousSize)
-                slice.append(contentsOf: (0..<contiguousSize).map { _ in supplier() })
-            }
-            self.init(shape: shape, units: slice)
-    }
-
-    /// Allocate and initialize a tensor to a repeated value
-    /// - parameter shape: tensor shape
-    /// - parameter repeating: repeated value
-    public init(shape: TensorShape, repeating repeatedValue: UnitType) {
-        let units = ContiguousArray(repeating: repeatedValue, count: shape.contiguousSize)
-        self.init(shape: shape, units: units)
-    }
-
-    /// Allocate and initialize a tensor using the factory function
-    /// - parameter shape: tensor shape
-    /// - parameter supplier: factory function providing values lazily
-    public init(shape: TensorShape, supplier: () -> UnitType) {
-        let units = ContiguousArray((0..<shape.contiguousSize).map { _ in supplier() })
-        self.init(shape: shape, units: units)
+public extension TensorSlice where UnitType : Strideable {
+    init(shape: TensorShape, unitsIncreasingFrom lowerBound: UnitType) {
+        self.init(Tensor(shape: shape, unitsIncreasingFrom: lowerBound))
     }
 }
 
-/// - TODO: Add conditional expressibility conformance in Swift 4
-
-public extension TensorSlice where UnitType : Equatable {
-    public static func ==(lhs: TensorSlice<UnitType>, rhs: TensorSlice<UnitType>) -> Bool {
-        return lhs.elementsEqual(rhs)
-    }
-
-    public func elementsEqual(_ other: TensorSlice<UnitType>) -> Bool {
-        guard shape == other.shape else { return false }
-        return shape.elementsEqual(other.shape) && units.elementsEqual(other.units)
-    }
-
-    public func unitsEqual(_ other: TensorSlice<UnitType>) -> Bool {
-        return units.elementsEqual(other.units)
-    }
-}
-
-extension TensorSlice where UnitType : Strideable {
-    public init(shape: TensorShape, unitsIncreasingFrom lowerBound: UnitType) {
-        var unit = lowerBound
-        self.init(shape: shape, supplier: {
-            defer { unit = unit.advanced(by: 1) }
-            return unit
-        })
-    }
-}
-
-extension TensorSlice where UnitType : Strideable, UnitType.Stride : SignedInteger {
-    public init(scalarElementsIn bounds: CountableRange<UnitType>) {
+public extension TensorSlice where UnitType : Strideable, UnitType.Stride : SignedInteger {
+    init(scalarElementsIn bounds: CountableRange<UnitType>) {
         self.init(elementShape: .scalar, units: ContiguousArray(bounds))
     }
 
-    public init(scalarElementsIn bounds: CountableClosedRange<UnitType>) {
+    init(scalarElementsIn bounds: CountableClosedRange<UnitType>) {
         self.init(elementShape: .scalar, units: ContiguousArray(bounds))
     }
 }
@@ -311,7 +260,7 @@ public extension TensorSlice where UnitType : FloatingPoint {
     }
 }
 
-extension TensorSlice : RandomAccessCollection {
+extension TensorSlice : RandomAccessCollection, RangeReplaceableCollection {
     public typealias Index = Int
     public typealias Element = TensorSlice<UnitType>
     public typealias SubSequence = TensorSlice<UnitType>
@@ -384,7 +333,7 @@ extension TensorSlice : RandomAccessCollection {
 }
 
 public extension TensorSlice {
-    public func reshaped(as newShape: TensorShape) -> Tensor<UnitType>? {
+    func reshaped(as newShape: TensorShape) -> Tensor<UnitType>? {
         guard self.shape.contiguousSize == newShape.contiguousSize else {
             return nil
         }
@@ -397,6 +346,13 @@ public extension TensorSlice {
         (_ body: (UnsafeBufferPointer<UnitType>) throws -> Result) rethrows -> Result {
         return try units.withUnsafeBufferPointer { ptr in
             try body(ptr)
+        }
+    }
+
+    mutating func withUnsafeMutableBufferPointer<Result>
+        (_ body: (inout UnsafeMutableBufferPointer<UnitType>) throws -> Result) rethrows -> Result {
+        return try units.withUnsafeMutableBufferPointer { ptr in
+            try body(&ptr)
         }
     }
 }
