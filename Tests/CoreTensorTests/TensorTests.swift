@@ -2,7 +2,7 @@
 //  TensorTests.swift
 //  CoreTensor
 //
-//  Copyright 2016-2017 DLVM Team.
+//  Copyright 2016-2017 The DLVM Team.
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -63,8 +63,8 @@ class CoreTensorTests: XCTestCase {
     func testEquality() {
         let highTensor = Tensor<Int>(shape: [1, 4, 3], unitsIncreasingFrom: 0)
         let lowTensor = Tensor<Int>(shape: [4, 3], unitsIncreasingFrom: 0)
-        XCTAssertTrue(highTensor.unitsEqual(lowTensor))
-        XCTAssertFalse(highTensor.elementsEqual(lowTensor))
+        XCTAssertTrue(highTensor.units == lowTensor.units)
+        XCTAssertFalse(highTensor == lowTensor)
         XCTAssertTrue(highTensor.shape ~ lowTensor.shape)
         XCTAssertTrue(highTensor.isSimilar(to: lowTensor))
         XCTAssertFalse(highTensor.isIsomorphic(to: lowTensor))
@@ -179,3 +179,4 @@ class CoreTensorTests: XCTestCase {
     }
 
 }
+

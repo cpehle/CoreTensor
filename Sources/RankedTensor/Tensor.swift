@@ -2,7 +2,7 @@
 //  Tensor.swift
 //  RankedTensor
 //
-//  Copyright 2016-2017 DLVM Team.
+//  Copyright 2016-2017 The DLVM Team.
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -22,189 +22,151 @@ import struct CoreTensor.TensorSlice
 import struct CoreTensor.Tensor
 
 /// Tensor with static rank
-public struct RankedTensor<R: StaticRank> {
-    public typealias DataType = R.DataType
+public struct RankedTensor<R: StaticRank> : RankedTensorProtocol {
+    public typealias UnitType = R.UnitType
     public typealias Shape = R.Shape
     public typealias ElementTensor = R.ElementTensor
 
     /// Tensor storage
-    internal var storage: Tensor<DataType>
+    internal var base: Tensor<UnitType>
+}
 
+public extension RankedTensor {
     /// Tensor rank
-    public var rank: UInt {
+    var rank: UInt {
         return R.rank
     }
 
+    var dynamicShape: TensorShape {
+        return base.shape
+    }
+
     /// Tensor shape
-    public var shape: Shape
+    var shape: Shape {
+        return R.staticShape(from: dynamicShape)
+    }
 
     /// The number of items (atom) in the tensor.
-    public var unitCount: Int {
-        return units.count
+    var unitCount: Int {
+        return base.unitCount
     }
 
     /// The number of items (atoms) per element (subtensor).
-    /// - Note: This holds the same value as the computed property
-    /// `dynamicShape.contiguousSize`, which is extremely frequently used.
-    /// We cache it in this variable whenever a new shape is set
-    public private(set) var unitCountPerElement: Int
+    var unitCountPerElement: Int {
+        return base.unitCountPerElement
+    }
 
     /// Contiguous storage
-    public var units: ContiguousArray<DataType> {
-        return storage.units
+    var units: ContiguousArray<UnitType> {
+        return base.units
     }
 
     /// Capacity reserved for element tensors
-    public var capacity: Int {
-        return units.capacity / unitCountPerElement
+    var capacity: Int {
+        return base.capacity
     }
 
     /// Initialize a tensor using an existing slice of elements in row-major order
     /// - parameter shape: tensor shape
     /// - parameter elements: slice of existing elements in row-major order
-    internal init(shape: Shape, units: ContiguousArray<DataType>) {
-        // TODO: Reduce number of calls to `shapeToArray`
-        let shapeArray = RankedTensor.shapeToArray(shape)
-        let contiguousSize: Int = shapeArray.reduce(1, *)
-        precondition(units.count >= contiguousSize,
-                     "The slice has fewer elements than required by the shape")
-        self.shape = shape
-        self.storage = Tensor<DataType>(shape: TensorShape(shapeArray), units: units)
-        self.unitCountPerElement = shapeArray.count == 0 || shapeArray[0] == 0 ?
-            contiguousSize : contiguousSize / shapeArray[0]
+    internal init(shape: Shape, units: ContiguousArray<UnitType>) {
+        self.init(base: Tensor(shape: R.dynamicShape(from: shape), units: units))
     }
 
     /// Allocate and initialize a tensor to a repeated value
     /// - parameter shape: tensor shape
     /// - parameter repeating: repeated value
-    public init(shape: Shape, repeating repeatedValue: DataType) {
-        let contiguousSize: Int = RankedTensor.shapeToArray(shape).reduce(1, *)
-        let units = ContiguousArray(repeating: repeatedValue, count: contiguousSize)
-        self.init(shape: shape, units: units)
+    init(shape: Shape, repeating repeatedValue: UnitType) {
+        self.init(base: Tensor(shape: R.dynamicShape(from: shape), repeating: repeatedValue))
     }
 
     /// Allocate and initialize a tensor using the factory function
     /// - parameter shape: tensor shape
     /// - parameter supplier: factory function providing values lazily
-    public init(shape: Shape, supplier: () -> DataType) {
-        let contiguousSize: Int = RankedTensor.shapeToArray(shape).reduce(1, *)
-        let units = ContiguousArray((0..<contiguousSize).map { _ in supplier() })
-        self.init(shape: shape, units: units)
+    init(shape: Shape, supplier: () -> UnitType) {
+        self.init(base: Tensor(shape: R.dynamicShape(from: shape), supplier: supplier))
     }
-}
 
-public extension RankedTensor {
-    internal static func shapeToArray(_ shape: Shape) -> [Int] {
-        var shape = shape
-        return withUnsafePointer(to: &shape) { ptr in
-            ptr.withMemoryRebound(to: UInt.self, capacity: 1) { ptr in
-                let buf = UnsafeBufferPointer(start: ptr, count: Int(R.rank))
-                return buf.lazy.map {Int($0)}
+    /// Initialize a tensor from a sequence of elements in row-major order
+    /// - parameter shape: tensor shape
+    /// - parameter elements: sequence of elements in row-major order
+    /// - parameter vacancySupplier
+    init<S: Sequence>(shape: Shape, units: S,
+                      vacancySupplier supplier: (() -> UnitType)? = nil)
+        where S.Element == UnitType {
+            let contiguousSize = R.dynamicShape(from: shape).contiguousSize
+            var slice = ContiguousArray(units.prefix(contiguousSize))
+            /// If elements fewer than required by the shape and supplier is provided
+            /// generate new elements using the supplier until vacancy is filled
+            if slice.count < contiguousSize, let supplier = supplier {
+                slice.reserveCapacity(contiguousSize)
+                slice.append(contentsOf: (0..<contiguousSize).map { _ in supplier() })
             }
-        }
+            self.init(shape: shape, units: slice)
     }
 
-    var dynamicShape: TensorShape {
-        return storage.shape
-    }
-}
-
-/// - TODO: Add conditional expressibility conformance in Swift 4
-
-public extension RankedTensor where R.DataType : Equatable {
-    public static func ==<A>(lhs: RankedTensor<R>, rhs: RankedTensor<A>) -> Bool
-        where A.DataType == DataType {
-            return lhs.elementsEqual(rhs)
-    }
-
-    public func elementsEqual<A>(_ other: RankedTensor<A>) -> Bool
-        where A.DataType == DataType {
-            guard dynamicShape == other.dynamicShape else { return false }
-            return units.elementsEqual(other.units)
-    }
-
-    public func unitsEqual<A>(_ other: RankedTensor<A>) -> Bool
-        where A.DataType == DataType {
-            return units.elementsEqual(other.units)
+    /// Initialize a tensor from a tensor slice
+    /// - parameter slice: tensor slice
+    init(_ slice: RankedTensorSlice<R>) {
+        self.init(shape: slice.shape, units: slice.units)
     }
 }
 
 public extension RankedTensor {
-    public func isSimilar<A>(to other: RankedTensor<A>) -> Bool
-        where A.DataType == DataType {
-            return dynamicShape.isSimilar(to: other.dynamicShape)
+    func isSimilar<S>(to other: RankedTensor<S>) -> Bool where S.UnitType == UnitType {
+        return base.isSimilar(to: other.base)
     }
 
-    public func isIsomorphic<A>(to other: RankedTensor<A>) -> Bool
-        where A.DataType == DataType {
-            return dynamicShape == other.dynamicShape
+    func isIsomorphic<S>(to other: RankedTensor<S>) -> Bool where S.UnitType == UnitType {
+        return base.isIsomorphic(to: other.base)
     }
 }
 
-extension RankedTensor where R.DataType : Strideable {
-    public init(shape: Shape, unitsIncreasingFrom lowerBound: DataType) {
-        var unit = lowerBound
-        self.init(shape: shape, supplier: {
-            defer { unit = unit.advanced(by: 1) }
-            return unit
-        })
+public extension RankedTensor where R.UnitType : Strideable {
+    init(shape: Shape, unitsIncreasingFrom lowerBound: UnitType) {
+        self.init(base: Tensor(shape: R.dynamicShape(from: shape), unitsIncreasingFrom: lowerBound))
     }
 }
 
-extension RankedTensor where R.DataType : Strideable, R.DataType.Stride : SignedInteger, R.Shape == (UInt) {
-    public init(scalarElementsIn bounds: CountableRange<DataType>) {
-        self.init(shape: (UInt(bounds.count)), units: ContiguousArray(bounds))
+public extension RankedTensor where R.UnitType : Strideable, R.UnitType.Stride : SignedInteger, R.Shape == (UInt) {
+    init(scalarElementsIn bounds: CountableRange<UnitType>) {
+        self.init(base: Tensor(scalarElementsIn: bounds))
     }
 
-    public init(scalarElementsIn bounds: CountableClosedRange<DataType>) {
-        self.init(shape: (UInt(bounds.count)), units: ContiguousArray(bounds))
+    init(scalarElementsIn bounds: CountableClosedRange<UnitType>) {
+        self.init(base: Tensor(scalarElementsIn: bounds))
     }
 }
 
 public extension RankedTensor {
-    func makeUnitIterator() -> IndexingIterator<ContiguousArray<DataType>> {
-        return units.makeIterator()
-    }
-
-    mutating func updateUnit(at index: Int, to newValue: DataType) {
-        storage.updateUnit(at: index, to: newValue)
+    mutating func updateUnit(at index: Int, to newValue: UnitType) {
+        base.updateUnit(at: index, to: newValue)
     }
 }
 
-public extension RankedTensor where R.DataType : Numeric {
-    mutating func incrementUnit(at index: Int, by newValue: DataType) {
-        storage.incrementUnit(at: index, by: newValue)
+public extension RankedTensor where R.UnitType : Numeric {
+    mutating func incrementUnit(at index: Int, by newValue: UnitType) {
+        base.incrementUnit(at: index, by: newValue)
     }
 
-    mutating func decrementUnit(at index: Int, by newValue: DataType) {
-        storage.decrementUnit(at: index, by: newValue)
+    mutating func decrementUnit(at index: Int, by newValue: UnitType) {
+        base.decrementUnit(at: index, by: newValue)
     }
 
-    mutating func multiplyUnit(at index: Int, by newValue: DataType) {
-        storage.multiplyUnit(at: index, by: newValue)
-    }
-}
-
-public extension RankedTensor where R.DataType : BinaryInteger {
-    mutating func divideUnit(at index: Int, by newValue: DataType) {
-        storage.divideUnit(at: index, by: newValue)
+    mutating func multiplyUnit(at index: Int, by newValue: UnitType) {
+        base.multiplyUnit(at: index, by: newValue)
     }
 }
 
-public extension RankedTensor where R.DataType : FloatingPoint {
-    mutating func divideUnit(at index: Int, by newValue: DataType) {
-        storage.divideUnit(at: index, by: newValue)
+public extension RankedTensor where R.UnitType : BinaryInteger {
+    mutating func divideUnit(at index: Int, by newValue: UnitType) {
+        base.divideUnit(at: index, by: newValue)
     }
 }
 
-public extension RankedTensor {
-    func unitIndex(fromIndex index: Int) -> Int {
-        return unitCountPerElement * index
-    }
-
-    func unitSubrange(from tensorSubrange: Range<Int>) -> Range<Int> {
-        return unitIndex(fromIndex: tensorSubrange.lowerBound)
-            ..< unitIndex(fromIndex: tensorSubrange.upperBound)
+public extension RankedTensor where R.UnitType : FloatingPoint {
+    mutating func divideUnit(at index: Int, by newValue: UnitType) {
+        base.divideUnit(at: index, by: newValue)
     }
 }
 
@@ -213,48 +175,13 @@ extension RankedTensor : RandomAccessCollection {
     public typealias Element = ElementTensor
     public typealias SubSequence = RankedTensorSlice<R>
 
-    /// Get indices corresponding to the units of the element tensor at an index
-    fileprivate func getElementTensorRange(index: Int) -> CountableRange<Int> {
-        let elementTensorShape = dynamicShape.dropFirst()
-        let contiguousIndex = unitIndex(fromIndex: index)
-        return contiguousIndex..<contiguousIndex+elementTensorShape.contiguousSize
-    }
-
-    /// Get units in the element tensor at an index
-    fileprivate func getElementTensorUnits(index: Int) -> ContiguousArray<DataType> {
-        let range = getElementTensorRange(index: index)
-        return ContiguousArray(units[range])
-    }
-
     /// Access the scalar element or element tensor at an index
     public subscript(index: Int) -> Element {
         get {
-            switch (Element.self) {
-            case is DataType.Type:
-                return units[index] as! Element
-            case is TensorSlice1D<DataType>.Type:
-                return TensorSlice1D<DataType>(base: self, index: index) as! Element
-            case is TensorSlice2D<DataType>.Type:
-                return TensorSlice2D<DataType>(base: self, index: index) as! Element
-            case is TensorSlice3D<DataType>.Type:
-                return TensorSlice3D<DataType>(base: self, index: index) as! Element
-            default:
-                fatalError("Invalid element tensor type")
-            }
+            return R.element(of: self, at: index)
         }
         set {
-            switch (newValue) {
-            case let scalar as DataType:
-                storage[index] = TensorSlice(scalar: scalar)
-            case let tensor as TensorSlice1D<DataType>:
-                storage[index] = TensorSlice(tensor.base)
-            case let tensor as TensorSlice2D<DataType>:
-                storage[index] = TensorSlice(tensor.base)
-            case let tensor as TensorSlice3D<DataType>:
-                storage[index] = TensorSlice(tensor.base)
-            default:
-                fatalError("Invalid element tensor type")
-            }
+            R.updateElement(newValue, at: index, in: &self)
         }
     }
 
@@ -270,51 +197,62 @@ extension RankedTensor : RandomAccessCollection {
                          "Slice indices are out of bounds")
             precondition(newValue.dynamicShape == dynamicShape.dropFirst().prepending(bounds.count),
                          "Shape mismatch")
-            storage[bounds] = newValue.base
+            base[bounds] = newValue.base
         }
     }
 
     /// Returns the number of elements
     public var count: Int {
-        return units.count / unitCountPerElement
+        return base.count
     }
 
     /// Returns a sequence of indices for elements
     public var indices: CountableRange<Int> {
-        return 0..<endIndex
+        return base.indices
     }
 
     public var startIndex: Int {
-        return 0
+        return base.startIndex
     }
 
     public var endIndex: Int {
-        return count
+        return base.endIndex
     }
 
     /// Returns the index after the specified one in the current dimension
     public func index(after i: Int) -> Int {
-        return i + 1
+        return base.index(after: i)
     }
 
     /// Returns the index before the specified one in the current dimension
     public func index(before i: Int) -> Int {
-        return i - 1
+        return base.index(before: i)
     }
 }
 
 public extension RankedTensor {
     func withUnsafeBufferPointer<Result>
-        (_ body: (UnsafeBufferPointer<DataType>) throws -> Result) rethrows -> Result {
-        return try units.withUnsafeBufferPointer { ptr in
-            try body(ptr)
-        }
+        (_ body: (UnsafeBufferPointer<UnitType>) throws -> Result) rethrows -> Result {
+        return try base.withUnsafeBufferPointer(body)
+    }
+
+    mutating func withUnsafeMutableBufferPointer<Result>
+        (_ body: (inout UnsafeMutableBufferPointer<UnitType>) throws -> Result) rethrows -> Result {
+        return try base.withUnsafeMutableBufferPointer(body)
     }
 }
 
 extension RankedTensor : TextOutputStreamable {
     public func write<Target>(to target: inout Target) where Target : TextOutputStream {
-        target.write("[\(map {"\($0)"}.joined(separator: ", "))]")
+        base.write(to: &target)
+    }
+}
+
+extension RankedTensor : ExpressibleByArrayLiteral {
+    public typealias ArrayLiteralElement = R.ArrayLiteralElement
+
+    public init(arrayLiteral elements: ArrayLiteralElement...) {
+        self = R.makeTensor(from: elements)
     }
 }
 
@@ -325,3 +263,12 @@ public typealias Tensor4D<T> = RankedTensor<R4<T>>
 
 public typealias Vector<T> = Tensor1D<T>
 public typealias Matrix<T> = Tensor2D<T>
+
+public typealias Float1D<T> = Tensor1D<Float>
+public typealias Float2D<T> = Tensor2D<Float>
+public typealias Float3D<T> = Tensor3D<Float>
+public typealias Float4D<T> = Tensor4D<Float>
+public typealias Double1D<T> = Tensor1D<Double>
+public typealias Double2D<T> = Tensor2D<Double>
+public typealias Double3D<T> = Tensor3D<Double>
+public typealias Double4D<T> = Tensor4D<Double>
