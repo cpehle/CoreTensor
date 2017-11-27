@@ -20,9 +20,9 @@
 /// Tensor slice
 public struct TensorSlice<UnitType> : TensorProtocol {
     public typealias Shape = TensorShape
-    public typealias Base = Tensor<UnitType>
+    public typealias BaseForm = Tensor<UnitType>
 
-    public private(set) var base: Base
+    public private(set) var base: BaseForm
     private var baseIndices: [Int]
     private var bounds: CountableRange<Int>?
 
@@ -208,12 +208,6 @@ public extension TensorSlice {
     }
 }
 
-public extension TensorSlice where UnitType : Strideable {
-    init(shape: TensorShape, unitsIncreasingFrom lowerBound: UnitType) {
-        self.init(Tensor(shape: shape, unitsIncreasingFrom: lowerBound))
-    }
-}
-
 public extension TensorSlice where UnitType : Strideable, UnitType.Stride : SignedInteger {
     init(scalarElementsIn bounds: CountableRange<UnitType>) {
         self.init(elementShape: .scalar, units: ContiguousArray(bounds))
@@ -260,7 +254,7 @@ public extension TensorSlice where UnitType : FloatingPoint {
     }
 }
 
-extension TensorSlice : RandomAccessCollection, RangeReplaceableCollection {
+extension TensorSlice : RandomAccessCollection {
     public typealias Index = Int
     public typealias Element = TensorSlice<UnitType>
     public typealias SubSequence = TensorSlice<UnitType>

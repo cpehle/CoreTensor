@@ -20,6 +20,7 @@
 /// Tensor
 public struct Tensor<UnitType> : TensorProtocol {
     public typealias Shape = TensorShape
+    public typealias BaseForm = Tensor<UnitType>
 
     /// Element tensor shape
     public let elementShape: TensorShape?
@@ -79,10 +80,10 @@ public extension Tensor {
     /// Initialize a tensor from a sequence of tensors of element shape
     init<S: Sequence>(elementShape: TensorShape, elements: S)
         where S.Element : TensorProtocol, S.Element.UnitType == UnitType {
-            self.init(elementShape: elementShape)
-            for element in elements {
-                units.append(contentsOf: element.units)
-            }
+        self.init(elementShape: elementShape)
+        for element in elements {
+            units.append(contentsOf: element.units)
+        }
     }
 
     /// Initialize a tensor from a sequence of elements in row-major order
@@ -92,15 +93,15 @@ public extension Tensor {
     init<S: Sequence>(shape: TensorShape, units: S,
                       vacancySupplier supplier: (() -> UnitType)? = nil)
         where S.Iterator.Element == UnitType {
-            let contiguousSize = shape.contiguousSize
-            var slice = ContiguousArray(units.prefix(contiguousSize))
-            /// If elements fewer than required by the shape and supplier is provided
-            /// generate new elements using the supplier until vacancy is filled
-            if slice.count < contiguousSize, let supplier = supplier {
-                slice.reserveCapacity(shape.contiguousSize)
-                slice.append(contentsOf: (0..<contiguousSize).map { _ in supplier() })
-            }
-            self.init(shape: shape, units: slice)
+        let contiguousSize = shape.contiguousSize
+        var slice = ContiguousArray(units.prefix(contiguousSize))
+        /// If elements fewer than required by the shape and supplier is provided
+        /// generate new elements using the supplier until vacancy is filled
+        if slice.count < contiguousSize, let supplier = supplier {
+            slice.reserveCapacity(shape.contiguousSize)
+            slice.append(contentsOf: (0..<contiguousSize).map { _ in supplier() })
+        }
+        self.init(shape: shape, units: slice)
     }
 
     /// Allocate and initialize a tensor to a repeated value
@@ -122,16 +123,6 @@ public extension Tensor {
     /// Initialize a tensor from a TensorSlice
     init(_ slice: TensorSlice<UnitType>) {
         self.init(elementShape: slice.elementShape, units: ContiguousArray(slice.units))
-    }
-}
-
-public extension Tensor where UnitType : Strideable {
-    init(shape: TensorShape, unitsIncreasingFrom lowerBound: UnitType) {
-        var unit = lowerBound
-        self.init(shape: shape, supplier: {
-            defer { unit = unit.advanced(by: 1) }
-            return unit
-        })
     }
 }
 
@@ -181,7 +172,7 @@ public extension Tensor where UnitType : FloatingPoint {
     }
 }
 
-extension Tensor : RandomAccessCollection, RangeReplaceableCollection {
+extension Tensor : RandomAccessCollection {
     public typealias Index = Int
     public typealias Element = TensorSlice<UnitType>
     public typealias SubSequence = TensorSlice<UnitType>

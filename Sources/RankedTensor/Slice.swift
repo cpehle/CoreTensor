@@ -22,10 +22,11 @@ import struct CoreTensor.TensorShape
 import struct CoreTensor.TensorSlice
 
 /// Ranked tensor slice
-public struct RankedTensorSlice<R: StaticRank> : RankedTensorProtocol {
-    public typealias UnitType = R.UnitType
-    public typealias Shape = R.Shape
-    public typealias ElementTensor = R.ElementTensor
+public struct RankedTensorSlice<Rank: StaticRank> : RankedTensorProtocol {
+    public typealias UnitType = Rank.UnitType
+    public typealias Shape = Rank.Shape
+    public typealias BaseForm = RankedTensor<Rank>
+    public typealias ElementTensor = Rank.ElementTensor
 
     internal var base: TensorSlice<UnitType>
 
@@ -37,12 +38,12 @@ public struct RankedTensorSlice<R: StaticRank> : RankedTensorProtocol {
 public extension RankedTensorSlice {
     /// Tensor rank
     var rank: UInt {
-        return R.rank
+        return Rank.rank
     }
 
     /// Tensor shape
     var shape: Shape {
-        return R.staticShape(from: base.shape)
+        return Rank.staticShape(from: base.shape)
     }
 
     var elementShape: TensorShape? {
@@ -80,6 +81,13 @@ public extension RankedTensorSlice {
     }
 }
 
+public extension RankedTensorSlice where Shape == Shape1D {
+    /// Initialize a vector from units
+    init<C: Collection>(_ units: C) where C.Element == UnitType, C.IndexDistance == Int {
+        self.init(shape: (UInt(units.count)), units: units)
+    }
+}
+
 extension RankedTensorSlice {
     init<S>(base: RankedTensor<S>, indices: [Int]) where S.UnitType == UnitType {
         self.init(base: TensorSlice(base: base.base, indices: indices))
@@ -91,11 +99,11 @@ extension RankedTensorSlice {
 }
 
 public extension RankedTensorSlice {
-    init(_ base: RankedTensor<R>) {
+    init(_ base: RankedTensor<Rank>) {
         self.init(base: TensorSlice(base.base))
     }
 
-    init(base: RankedTensor<R>, bounds: CountableRange<Int>?) {
+    init(base: RankedTensor<Rank>, bounds: CountableRange<Int>?) {
         self.init(base: TensorSlice(base: base.base, bounds: bounds))
     }
 
@@ -120,24 +128,23 @@ public extension RankedTensorSlice {
     /// Initialize a tensor using an existing slice of elements in row-major order
     /// - parameter shape: tensor shape
     /// - parameter elements: slice of existing elements in row-major order
-    internal init(shape: R.Shape, units: ContiguousArray<UnitType>) {
+    internal init(shape: Rank.Shape, units: ContiguousArray<UnitType>) {
         self.init(RankedTensor(shape: shape, units: units))
     }
 
     /// Allocate and initialize a tensor to a repeated value
     /// - parameter shape: tensor shape
     /// - parameter repeating: repeated value
-    init(shape: R.Shape, repeating repeatedValue: UnitType) {
+    init(shape: Rank.Shape, repeating repeatedValue: UnitType) {
         self.init(RankedTensor(shape: shape, repeating: repeatedValue))
     }
 
     /// Allocate and initialize a tensor using the factory function
     /// - parameter shape: tensor shape
     /// - parameter supplier: factory function providing values lazily
-    init(shape: R.Shape, supplier: () -> UnitType) {
+    init(shape: Rank.Shape, supplier: () -> UnitType) {
         self.init(RankedTensor(shape: shape, supplier: supplier))
     }
-
 
     /// Initialize a tensor from a sequence of elements in row-major order
     /// - parameter shape: tensor shape
@@ -166,13 +173,13 @@ public extension RankedTensorSlice {
     }
 }
 
-public extension RankedTensorSlice where R.UnitType : Strideable {
+public extension RankedTensorSlice where Rank.UnitType : Strideable {
     init(shape: Shape, unitsIncreasingFrom lowerBound: UnitType) {
         self.init(RankedTensor(shape: shape, unitsIncreasingFrom: lowerBound))
     }
 }
 
-public extension RankedTensorSlice where R.UnitType : Strideable, R.UnitType.Stride : SignedInteger, R.Shape == (UInt) {
+public extension RankedTensorSlice where Rank.UnitType : Strideable, Rank.UnitType.Stride : SignedInteger, Rank.Shape == (UInt) {
     init(scalarElementsIn bounds: CountableRange<UnitType>) {
         self.init(RankedTensor(scalarElementsIn: bounds))
     }
@@ -188,7 +195,7 @@ public extension RankedTensorSlice {
     }
 }
 
-public extension RankedTensorSlice where R.UnitType : Numeric {
+public extension RankedTensorSlice where Rank.UnitType : Numeric {
     mutating func incrementUnit(at index: Int, by newValue: UnitType) {
         base.incrementUnit(at: index, by: newValue)
     }
@@ -202,13 +209,13 @@ public extension RankedTensorSlice where R.UnitType : Numeric {
     }
 }
 
-public extension RankedTensorSlice where R.UnitType : BinaryInteger {
+public extension RankedTensorSlice where Rank.UnitType : BinaryInteger {
     mutating func divideUnit(at index: Int, by newValue: UnitType) {
         base.divideUnit(at: index, by: newValue)
     }
 }
 
-public extension RankedTensorSlice where R.UnitType : FloatingPoint {
+public extension RankedTensorSlice where Rank.UnitType : FloatingPoint {
     mutating func divideUnit(at index: Int, by newValue: UnitType) {
         base.divideUnit(at: index, by: newValue)
     }
@@ -217,15 +224,15 @@ public extension RankedTensorSlice where R.UnitType : FloatingPoint {
 extension RankedTensorSlice : RandomAccessCollection {
     public typealias Index = Int
     public typealias Element = ElementTensor
-    public typealias SubSequence = RankedTensorSlice<R>
+    public typealias SubSequence = RankedTensorSlice<Rank>
 
     /// Access the scalar element or element tensor at index
     public subscript(index: Int) -> Element {
         get {
-            return R.element(of: self, at: index)
+            return Rank.element(of: self, at: index)
         }
         set {
-            R.updateElement(newValue, at: index, in: &self)
+            Rank.updateElement(newValue, at: index, in: &self)
         }
     }
 

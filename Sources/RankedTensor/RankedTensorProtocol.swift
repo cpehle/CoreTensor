@@ -20,7 +20,11 @@
 import CoreTensor
 
 public protocol RankedTensorProtocol : ShapedArrayProtocol {
+    associatedtype Rank : StaticRank where Rank.Shape == Shape
     var dynamicShape: TensorShape { get }
+    init(shape: Rank.Shape, repeating repeatedValue: UnitType)
+    init(shape: Rank.Shape, supplier: () -> UnitType)
+    init<S: Sequence>(shape: Shape, units: S, vacancySupplier supplier: (() -> UnitType)?) where S.Element == UnitType
 }
 
 public extension RankedTensorProtocol where UnitType : Equatable {
@@ -30,5 +34,15 @@ public extension RankedTensorProtocol where UnitType : Equatable {
 
     func elementsEqual<T: RankedTensorProtocol>(_ other: T) -> Bool where T.UnitType == UnitType {
         return self == other
+    }
+}
+
+public extension RankedTensorProtocol where Shape == Shape2D {
+    var rowCount: UInt {
+        return shape.0
+    }
+
+    var columnCount: UInt {
+        return shape.1
     }
 }
