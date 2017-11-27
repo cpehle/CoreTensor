@@ -22,10 +22,11 @@ import struct CoreTensor.TensorSlice
 import struct CoreTensor.Tensor
 
 /// Tensor with static rank
-public struct RankedTensor<R: StaticRank> : RankedTensorProtocol {
-    public typealias UnitType = R.UnitType
-    public typealias Shape = R.Shape
-    public typealias ElementTensor = R.ElementTensor
+public struct RankedTensor<Rank: StaticRank> : RankedTensorProtocol {
+    public typealias UnitType = Rank.UnitType
+    public typealias Shape = Rank.Shape
+    public typealias BaseForm = RankedTensor<Rank>
+    public typealias ElementTensor = Rank.ElementTensor
 
     /// Tensor storage
     internal var base: Tensor<UnitType>
@@ -34,7 +35,7 @@ public struct RankedTensor<R: StaticRank> : RankedTensorProtocol {
 public extension RankedTensor {
     /// Tensor rank
     var rank: UInt {
-        return R.rank
+        return Rank.rank
     }
 
     var dynamicShape: TensorShape {
@@ -43,7 +44,7 @@ public extension RankedTensor {
 
     /// Tensor shape
     var shape: Shape {
-        return R.staticShape(from: dynamicShape)
+        return Rank.staticShape(from: dynamicShape)
     }
 
     /// The number of items (atom) in the tensor.
@@ -70,21 +71,21 @@ public extension RankedTensor {
     /// - parameter shape: tensor shape
     /// - parameter elements: slice of existing elements in row-major order
     internal init(shape: Shape, units: ContiguousArray<UnitType>) {
-        self.init(base: Tensor(shape: R.dynamicShape(from: shape), units: units))
+        self.init(base: Tensor(shape: Rank.dynamicShape(from: shape), units: units))
     }
 
     /// Allocate and initialize a tensor to a repeated value
     /// - parameter shape: tensor shape
     /// - parameter repeating: repeated value
     init(shape: Shape, repeating repeatedValue: UnitType) {
-        self.init(base: Tensor(shape: R.dynamicShape(from: shape), repeating: repeatedValue))
+        self.init(base: Tensor(shape: Rank.dynamicShape(from: shape), repeating: repeatedValue))
     }
 
     /// Allocate and initialize a tensor using the factory function
     /// - parameter shape: tensor shape
     /// - parameter supplier: factory function providing values lazily
     init(shape: Shape, supplier: () -> UnitType) {
-        self.init(base: Tensor(shape: R.dynamicShape(from: shape), supplier: supplier))
+        self.init(base: Tensor(shape: Rank.dynamicShape(from: shape), supplier: supplier))
     }
 
     /// Initialize a tensor from a sequence of elements in row-major order
@@ -94,7 +95,7 @@ public extension RankedTensor {
     init<S: Sequence>(shape: Shape, units: S,
                       vacancySupplier supplier: (() -> UnitType)? = nil)
         where S.Element == UnitType {
-            let contiguousSize = R.dynamicShape(from: shape).contiguousSize
+            let contiguousSize = Rank.dynamicShape(from: shape).contiguousSize
             var slice = ContiguousArray(units.prefix(contiguousSize))
             /// If elements fewer than required by the shape and supplier is provided
             /// generate new elements using the supplier until vacancy is filled
@@ -107,8 +108,15 @@ public extension RankedTensor {
 
     /// Initialize a tensor from a tensor slice
     /// - parameter slice: tensor slice
-    init(_ slice: RankedTensorSlice<R>) {
+    init(_ slice: RankedTensorSlice<Rank>) {
         self.init(shape: slice.shape, units: slice.units)
+    }
+}
+
+public extension RankedTensor where Shape == Shape1D {
+    /// Initialize a vector from units
+    init<C: Collection>(_ units: C) where C.Element == UnitType, C.IndexDistance == Int {
+        self.init(shape: (UInt(units.count)), units: units)
     }
 }
 
@@ -122,13 +130,13 @@ public extension RankedTensor {
     }
 }
 
-public extension RankedTensor where R.UnitType : Strideable {
+public extension RankedTensor where Rank.UnitType : Strideable {
     init(shape: Shape, unitsIncreasingFrom lowerBound: UnitType) {
-        self.init(base: Tensor(shape: R.dynamicShape(from: shape), unitsIncreasingFrom: lowerBound))
+        self.init(base: Tensor(shape: Rank.dynamicShape(from: shape), unitsIncreasingFrom: lowerBound))
     }
 }
 
-public extension RankedTensor where R.UnitType : Strideable, R.UnitType.Stride : SignedInteger, R.Shape == (UInt) {
+public extension RankedTensor where Rank.UnitType : Strideable, Rank.UnitType.Stride : SignedInteger, Rank.Shape == (UInt) {
     init(scalarElementsIn bounds: CountableRange<UnitType>) {
         self.init(base: Tensor(scalarElementsIn: bounds))
     }
@@ -144,7 +152,7 @@ public extension RankedTensor {
     }
 }
 
-public extension RankedTensor where R.UnitType : Numeric {
+public extension RankedTensor where Rank.UnitType : Numeric {
     mutating func incrementUnit(at index: Int, by newValue: UnitType) {
         base.incrementUnit(at: index, by: newValue)
     }
@@ -158,13 +166,13 @@ public extension RankedTensor where R.UnitType : Numeric {
     }
 }
 
-public extension RankedTensor where R.UnitType : BinaryInteger {
+public extension RankedTensor where Rank.UnitType : BinaryInteger {
     mutating func divideUnit(at index: Int, by newValue: UnitType) {
         base.divideUnit(at: index, by: newValue)
     }
 }
 
-public extension RankedTensor where R.UnitType : FloatingPoint {
+public extension RankedTensor where Rank.UnitType : FloatingPoint {
     mutating func divideUnit(at index: Int, by newValue: UnitType) {
         base.divideUnit(at: index, by: newValue)
     }
@@ -173,15 +181,15 @@ public extension RankedTensor where R.UnitType : FloatingPoint {
 extension RankedTensor : RandomAccessCollection {
     public typealias Index = Int
     public typealias Element = ElementTensor
-    public typealias SubSequence = RankedTensorSlice<R>
+    public typealias SubSequence = RankedTensorSlice<Rank>
 
     /// Access the scalar element or element tensor at an index
     public subscript(index: Int) -> Element {
         get {
-            return R.element(of: self, at: index)
+            return Rank.element(of: self, at: index)
         }
         set {
-            R.updateElement(newValue, at: index, in: &self)
+            Rank.updateElement(newValue, at: index, in: &self)
         }
     }
 
@@ -249,10 +257,10 @@ extension RankedTensor : TextOutputStreamable {
 }
 
 extension RankedTensor : ExpressibleByArrayLiteral {
-    public typealias ArrayLiteralElement = R.ArrayLiteralElement
+    public typealias ArrayLiteralElement = Rank.ArrayLiteralElement
 
     public init(arrayLiteral elements: ArrayLiteralElement...) {
-        self = R.makeTensor(from: elements)
+        self = Rank.makeTensor(from: elements)
     }
 }
 

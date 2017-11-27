@@ -70,6 +70,10 @@ public struct R1<T> : StaticRank {
         return RankedTensor<R1<T>>(shape: (UInt(literal.count)), units: ContiguousArray(literal))
     }
 
+    public static func makeTensor(with elements: [T]) -> RankedTensor<R1<T>> {
+        return makeTensor(from: elements)
+    }
+
     public static func element(of tensor: RankedTensor<R1<T>>, at index: Int) -> T {
         return tensor.units[index]
     }
@@ -114,6 +118,14 @@ public struct R2<T> : StaticRank {
             units.append(contentsOf: subArray)
         }
         return RankedTensor<R2<T>>(shape: (dim0, dim1), units: units)
+    }
+
+    public static func makeTensor(with elements: [RankedTensor<R1<T>>]) -> RankedTensor<R2<T>> {
+        return makeTensor(from: elements.map { Array($0.units) })
+    }
+
+    public static func makeTensor(with elements: [RankedTensorSlice<R1<T>>]) -> RankedTensor<R2<T>> {
+        return makeTensor(from: elements.map { Array($0.units) })
     }
 
     public static func element(of tensor: RankedTensor<R2<T>>, at index: Int) -> RankedTensorSlice<R1<T>> {
@@ -168,6 +180,14 @@ public struct R3<T> : StaticRank {
             }
         }
         return RankedTensor<R3<T>>(shape: (dim0, dim1, dim2), units: units)
+    }
+
+    public static func makeTensor(with elements: [RankedTensor<R2<T>>]) -> RankedTensor<R3<T>> {
+        return makeTensor(from: elements.map { $0.map { Array($0.units) } })
+    }
+
+    public static func makeTensor(with elements: [RankedTensorSlice<R2<T>>]) -> RankedTensor<R3<T>> {
+        return makeTensor(from: elements.map { $0.map { Array($0.units) } })
     }
 
     public static func element(of tensor: RankedTensor<R3<T>>, at index: Int) -> RankedTensorSlice<R2<T>> {
@@ -231,6 +251,14 @@ public struct R4<T> : StaticRank {
             }
         }
         return RankedTensor<R4<T>>(shape: (dim0, dim1, dim2, dim3), units: units)
+    }
+
+    public static func makeTensor(with elements: [RankedTensor<R3<T>>]) -> RankedTensor<R4<T>> {
+        return makeTensor(from: elements.map { $0.map { $0.map { Array($0.units) } } })
+    }
+
+    public static func makeTensor(with elements: [RankedTensorSlice<R3<T>>]) -> RankedTensor<R4<T>> {
+        return makeTensor(from: elements.map { $0.map { $0.map { Array($0.units) } } })
     }
 
     public static func element(of tensor: RankedTensor<R4<T>>, at index: Int) -> RankedTensorSlice<R3<T>> {
