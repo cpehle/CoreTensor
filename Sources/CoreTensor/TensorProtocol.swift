@@ -17,8 +17,7 @@
 //  limitations under the License.
 //
 
-public protocol ShapedArrayProtocol : RandomAccessCollection
-    where IndexDistance == Int, Index == Int {
+public protocol ShapedArrayProtocol : RandomAccessCollection where Index == Int {
     associatedtype UnitType
     associatedtype UnitSequenceType: RandomAccessCollection
         where UnitSequenceType.Element == UnitType,
