@@ -234,6 +234,15 @@ public extension TensorShape {
         return TensorShape(newDims)
     }
 
+    /// Insert a dimension of 1 at a given index
+    func paddingDimension(at index: Int) -> TensorShape {
+        precondition(indices.contains(index) || endIndex == index,
+                     "Index out of bounds")
+        var newDims = dimensions
+        newDims.insert(1, at: index)
+        return TensorShape(newDims)
+    }
+
     /// Dropping 1-paddings from higher dimensions, if any
     func droppingHigherPaddings() -> TensorShape {
         // Would use `drop(while:)` in Swift 3.1
