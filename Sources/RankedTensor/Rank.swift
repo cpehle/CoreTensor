@@ -28,9 +28,9 @@ public protocol StaticRank {
     static var rank: UInt { get }
     static func makeTensor(from literal: [ArrayLiteralElement]) -> Tensor<Self>
     static func element(of tensor: Tensor<Self>, at index: Int) -> ElementTensor
-    static func element(of tensor: RankedTensorSlice<Self>, at index: Int) -> ElementTensor
+    static func element(of tensor: TensorSlice<Self>, at index: Int) -> ElementTensor
     static func updateElement(_ newElement: ElementTensor, at index: Int, in tensor: inout Tensor<Self>)
-    static func updateElement(_ newElement: ElementTensor, at index: Int, in tensor: inout RankedTensorSlice<Self>)
+    static func updateElement(_ newElement: ElementTensor, at index: Int, in tensor: inout TensorSlice<Self>)
 }
 
 public typealias Shape1D = (UInt)
@@ -78,17 +78,17 @@ public struct Rank1<T> : StaticRank {
         return tensor.units[index]
     }
 
-    public static func element(of tensor: RankedTensorSlice<Rank1<T>>, at index: Int) -> T {
+    public static func element(of tensor: TensorSlice<Rank1<T>>, at index: Int) -> T {
         let unitIndex = index.advanced(by: tensor.units.startIndex)
         return tensor.units[unitIndex]
     }
 
     public static func updateElement(_ newElement: T, at index: Int, in tensor: inout Tensor<Rank1<T>>) {
-        tensor.base[index] = TensorSlice(scalar: newElement)
+        tensor.base[index] = CoreTensor.TensorSlice(scalar: newElement)
     }
 
-    public static func updateElement(_ newElement: T, at index: Int, in tensor: inout RankedTensorSlice<Rank1<T>>) {
-        tensor.base[index] = TensorSlice(scalar: newElement)
+    public static func updateElement(_ newElement: T, at index: Int, in tensor: inout TensorSlice<Rank1<T>>) {
+        tensor.base[index] = CoreTensor.TensorSlice(scalar: newElement)
     }
 }
 
@@ -124,23 +124,23 @@ public struct Rank2<T> : StaticRank {
         return makeTensor(from: elements.map { Array($0.units) })
     }
 
-    public static func makeTensor(with elements: [RankedTensorSlice<Rank1<T>>]) -> Tensor<Rank2<T>> {
+    public static func makeTensor(with elements: [TensorSlice<Rank1<T>>]) -> Tensor<Rank2<T>> {
         return makeTensor(from: elements.map { Array($0.units) })
     }
 
-    public static func element(of tensor: Tensor<Rank2<T>>, at index: Int) -> RankedTensorSlice<Rank1<T>> {
+    public static func element(of tensor: Tensor<Rank2<T>>, at index: Int) -> TensorSlice<Rank1<T>> {
         return TensorSlice1D(base: tensor, index: index)
     }
 
-    public static func element(of tensor: RankedTensorSlice<Rank2<T>>, at index: Int) -> RankedTensorSlice<Rank1<T>> {
+    public static func element(of tensor: TensorSlice<Rank2<T>>, at index: Int) -> TensorSlice<Rank1<T>> {
         return TensorSlice1D(base: tensor, index: index)
     }
 
-    public static func updateElement(_ newElement: RankedTensorSlice<Rank1<T>>, at index: Int, in tensor: inout Tensor<Rank2<T>>) {
+    public static func updateElement(_ newElement: TensorSlice<Rank1<T>>, at index: Int, in tensor: inout Tensor<Rank2<T>>) {
         tensor.base[index] = newElement.base
     }
 
-    public static func updateElement(_ newElement: RankedTensorSlice<Rank1<T>>, at index: Int, in tensor: inout RankedTensorSlice<Rank2<T>>) {
+    public static func updateElement(_ newElement: TensorSlice<Rank1<T>>, at index: Int, in tensor: inout TensorSlice<Rank2<T>>) {
         tensor.base[index] = newElement.base
     }
 }
@@ -186,23 +186,23 @@ public struct Rank3<T> : StaticRank {
         return makeTensor(from: elements.map { $0.map { Array($0.units) } })
     }
 
-    public static func makeTensor(with elements: [RankedTensorSlice<Rank2<T>>]) -> Tensor<Rank3<T>> {
+    public static func makeTensor(with elements: [TensorSlice<Rank2<T>>]) -> Tensor<Rank3<T>> {
         return makeTensor(from: elements.map { $0.map { Array($0.units) } })
     }
 
-    public static func element(of tensor: Tensor<Rank3<T>>, at index: Int) -> RankedTensorSlice<Rank2<T>> {
+    public static func element(of tensor: Tensor<Rank3<T>>, at index: Int) -> TensorSlice<Rank2<T>> {
         return TensorSlice2D(base: tensor, index: index)
     }
 
-    public static func element(of tensor: RankedTensorSlice<Rank3<T>>, at index: Int) -> RankedTensorSlice<Rank2<T>> {
+    public static func element(of tensor: TensorSlice<Rank3<T>>, at index: Int) -> TensorSlice<Rank2<T>> {
         return TensorSlice2D(base: tensor, index: index)
     }
 
-    public static func updateElement(_ newElement: RankedTensorSlice<Rank2<T>>, at index: Int, in tensor: inout Tensor<Rank3<T>>) {
+    public static func updateElement(_ newElement: TensorSlice<Rank2<T>>, at index: Int, in tensor: inout Tensor<Rank3<T>>) {
         tensor.base[index] = newElement.base
     }
 
-    public static func updateElement(_ newElement: RankedTensorSlice<Rank2<T>>, at index: Int, in tensor: inout RankedTensorSlice<Rank3<T>>) {
+    public static func updateElement(_ newElement: TensorSlice<Rank2<T>>, at index: Int, in tensor: inout TensorSlice<Rank3<T>>) {
         tensor.base[index] = newElement.base
     }
 }
@@ -257,23 +257,23 @@ public struct Rank4<T> : StaticRank {
         return makeTensor(from: elements.map { $0.map { $0.map { Array($0.units) } } })
     }
 
-    public static func makeTensor(with elements: [RankedTensorSlice<Rank3<T>>]) -> Tensor<Rank4<T>> {
+    public static func makeTensor(with elements: [TensorSlice<Rank3<T>>]) -> Tensor<Rank4<T>> {
         return makeTensor(from: elements.map { $0.map { $0.map { Array($0.units) } } })
     }
 
-    public static func element(of tensor: Tensor<Rank4<T>>, at index: Int) -> RankedTensorSlice<Rank3<T>> {
+    public static func element(of tensor: Tensor<Rank4<T>>, at index: Int) -> TensorSlice<Rank3<T>> {
         return TensorSlice3D(base: tensor, index: index)
     }
 
-    public static func element(of tensor: RankedTensorSlice<Rank4<T>>, at index: Int) -> RankedTensorSlice<Rank3<T>> {
+    public static func element(of tensor: TensorSlice<Rank4<T>>, at index: Int) -> TensorSlice<Rank3<T>> {
         return TensorSlice3D(base: tensor, index: index)
     }
 
-    public static func updateElement(_ newElement: RankedTensorSlice<Rank3<T>>, at index: Int, in tensor: inout Tensor<Rank4<T>>) {
+    public static func updateElement(_ newElement: TensorSlice<Rank3<T>>, at index: Int, in tensor: inout Tensor<Rank4<T>>) {
         tensor.base[index] = newElement.base
     }
 
-    public static func updateElement(_ newElement: RankedTensorSlice<Rank3<T>>, at index: Int, in tensor: inout RankedTensorSlice<Rank4<T>>) {
+    public static func updateElement(_ newElement: TensorSlice<Rank3<T>>, at index: Int, in tensor: inout TensorSlice<Rank4<T>>) {
         tensor.base[index] = newElement.base
     }
 }

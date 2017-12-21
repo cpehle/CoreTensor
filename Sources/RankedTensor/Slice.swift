@@ -22,20 +22,20 @@ import struct CoreTensor.TensorShape
 import struct CoreTensor.TensorSlice
 
 /// Ranked tensor slice
-public struct RankedTensorSlice<Rank: StaticRank> : RankedTensorProtocol {
+public struct TensorSlice<Rank: StaticRank> : RankedTensorProtocol {
     public typealias UnitType = Rank.UnitType
     public typealias Shape = Rank.Shape
     public typealias BaseForm = Tensor<Rank>
     public typealias ElementTensor = Rank.ElementTensor
 
-    internal var base: TensorSlice<UnitType>
+    internal var base: CoreTensor.TensorSlice<UnitType>
 
-    private init(base: TensorSlice<UnitType>) {
+    private init(base: CoreTensor.TensorSlice<UnitType>) {
         self.base = base
     }
 }
 
-public extension RankedTensorSlice {
+public extension TensorSlice {
     /// Tensor rank
     var rank: UInt {
         return Rank.rank
@@ -81,50 +81,50 @@ public extension RankedTensorSlice {
     }
 }
 
-public extension RankedTensorSlice where Shape == Shape1D {
+public extension TensorSlice where Shape == Shape1D {
     /// Initialize a vector from units
     init<C: Collection>(_ units: C) where C.Element == UnitType, C.IndexDistance == Int {
         self.init(shape: (UInt(units.count)), units: units)
     }
 }
 
-extension RankedTensorSlice {
+extension TensorSlice {
     init<S>(base: Tensor<S>, indices: [Int]) where S.UnitType == UnitType {
-        self.init(base: TensorSlice(base: base.base, indices: indices))
+        self.init(base: CoreTensor.TensorSlice(base: base.base, indices: indices))
     }
 
-    init<S>(base: RankedTensorSlice<S>, indices: [Int]) where S.UnitType == UnitType {
-        self.init(base: TensorSlice(base: base.base, indices: indices))
+    init<S>(base: TensorSlice<S>, indices: [Int]) where S.UnitType == UnitType {
+        self.init(base: CoreTensor.TensorSlice(base: base.base, indices: indices))
     }
 }
 
-public extension RankedTensorSlice {
+public extension TensorSlice {
     init(_ base: Tensor<Rank>) {
-        self.init(base: TensorSlice(base.base))
+        self.init(base: CoreTensor.TensorSlice(base.base))
     }
 
     init(base: Tensor<Rank>, bounds: CountableRange<Int>?) {
-        self.init(base: TensorSlice(base: base.base, bounds: bounds))
+        self.init(base: CoreTensor.TensorSlice(base: base.base, bounds: bounds))
     }
 
-    init(base: RankedTensorSlice, bounds: CountableRange<Int>?) {
-        self.init(base: TensorSlice(base: base.base, bounds: bounds))
+    init(base: TensorSlice, bounds: CountableRange<Int>?) {
+        self.init(base: CoreTensor.TensorSlice(base: base.base, bounds: bounds))
     }
 
     init<S>(base: Tensor<S>, index: Int)
-        where S.ElementTensor == RankedTensorSlice, S.UnitType == UnitType
+        where S.ElementTensor == TensorSlice, S.UnitType == UnitType
     {
-        self.init(base: TensorSlice(base: base.base, index: index))
+        self.init(base: CoreTensor.TensorSlice(base: base.base, index: index))
     }
 
-    init<S>(base: RankedTensorSlice<S>, index: Int)
-        where S.ElementTensor == RankedTensorSlice, S.UnitType == UnitType
+    init<S>(base: TensorSlice<S>, index: Int)
+        where S.ElementTensor == TensorSlice, S.UnitType == UnitType
     {
-        self.init(base: TensorSlice(base: base.base, index: index))
+        self.init(base: CoreTensor.TensorSlice(base: base.base, index: index))
     }
 }
 
-public extension RankedTensorSlice {
+public extension TensorSlice {
     /// Initialize a tensor using an existing slice of elements in row-major order
     /// - parameter shape: tensor shape
     /// - parameter elements: slice of existing elements in row-major order
@@ -157,29 +157,29 @@ public extension RankedTensorSlice {
     }
 }
 
-public extension RankedTensorSlice {
+public extension TensorSlice {
     var dynamicShape: TensorShape {
         return base.shape
     }
 }
 
-public extension RankedTensorSlice {
-    func isSimilar<A>(to other: RankedTensorSlice<A>) -> Bool where A.UnitType == UnitType {
+public extension TensorSlice {
+    func isSimilar<A>(to other: TensorSlice<A>) -> Bool where A.UnitType == UnitType {
         return base.isSimilar(to: other.base)
     }
 
-    func isIsomorphic<A>(to other: RankedTensorSlice<A>) -> Bool where A.UnitType == UnitType {
+    func isIsomorphic<A>(to other: TensorSlice<A>) -> Bool where A.UnitType == UnitType {
         return base.isIsomorphic(to: other.base)
     }
 }
 
-public extension RankedTensorSlice where Rank.UnitType : Strideable {
+public extension TensorSlice where Rank.UnitType : Strideable {
     init(shape: Shape, unitsIncreasingFrom lowerBound: UnitType) {
         self.init(Tensor(shape: shape, unitsIncreasingFrom: lowerBound))
     }
 }
 
-public extension RankedTensorSlice where Rank.UnitType : Strideable, Rank.UnitType.Stride : SignedInteger, Rank.Shape == (UInt) {
+public extension TensorSlice where Rank.UnitType : Strideable, Rank.UnitType.Stride : SignedInteger, Rank.Shape == (UInt) {
     init(scalarElementsIn bounds: CountableRange<UnitType>) {
         self.init(Tensor(scalarElementsIn: bounds))
     }
@@ -189,13 +189,13 @@ public extension RankedTensorSlice where Rank.UnitType : Strideable, Rank.UnitTy
     }
 }
 
-public extension RankedTensorSlice {
+public extension TensorSlice {
     mutating func updateUnit(at index: Int, to newValue: UnitType) {
         base.updateUnit(at: index, to: newValue)
     }
 }
 
-public extension RankedTensorSlice where Rank.UnitType : Numeric {
+public extension TensorSlice where Rank.UnitType : Numeric {
     mutating func incrementUnit(at index: Int, by newValue: UnitType) {
         base.incrementUnit(at: index, by: newValue)
     }
@@ -209,22 +209,22 @@ public extension RankedTensorSlice where Rank.UnitType : Numeric {
     }
 }
 
-public extension RankedTensorSlice where Rank.UnitType : BinaryInteger {
+public extension TensorSlice where Rank.UnitType : BinaryInteger {
     mutating func divideUnit(at index: Int, by newValue: UnitType) {
         base.divideUnit(at: index, by: newValue)
     }
 }
 
-public extension RankedTensorSlice where Rank.UnitType : FloatingPoint {
+public extension TensorSlice where Rank.UnitType : FloatingPoint {
     mutating func divideUnit(at index: Int, by newValue: UnitType) {
         base.divideUnit(at: index, by: newValue)
     }
 }
 
-extension RankedTensorSlice : RandomAccessCollection {
+extension TensorSlice : RandomAccessCollection {
     public typealias Index = Int
     public typealias Element = ElementTensor
-    public typealias SubSequence = RankedTensorSlice<Rank>
+    public typealias SubSequence = TensorSlice<Rank>
 
     /// Access the scalar element or element tensor at index
     public subscript(index: Int) -> Element {
@@ -253,7 +253,7 @@ extension RankedTensorSlice : RandomAccessCollection {
     }
 }
 
-public extension RankedTensorSlice {
+public extension TensorSlice {
     func withUnsafeBufferPointer<Result>
         (_ body: (UnsafeBufferPointer<UnitType>) throws -> Result) rethrows -> Result {
         return try base.withUnsafeBufferPointer(body)
@@ -265,16 +265,16 @@ public extension RankedTensorSlice {
     }
 }
 
-extension RankedTensorSlice : TextOutputStreamable {
+extension TensorSlice : TextOutputStreamable {
     public func write<Target>(to target: inout Target) where Target : TextOutputStream {
         return base.write(to: &target)
     }
 }
 
-public typealias TensorSlice1D<T> = RankedTensorSlice<Rank1<T>>
-public typealias TensorSlice2D<T> = RankedTensorSlice<Rank2<T>>
-public typealias TensorSlice3D<T> = RankedTensorSlice<Rank3<T>>
-public typealias TensorSlice4D<T> = RankedTensorSlice<Rank4<T>>
+public typealias TensorSlice1D<T> = TensorSlice<Rank1<T>>
+public typealias TensorSlice2D<T> = TensorSlice<Rank2<T>>
+public typealias TensorSlice3D<T> = TensorSlice<Rank3<T>>
+public typealias TensorSlice4D<T> = TensorSlice<Rank4<T>>
 
 public typealias VectorSlice<T> = TensorSlice1D<T>
 public typealias MatrixSlice<T> = TensorSlice2D<T>

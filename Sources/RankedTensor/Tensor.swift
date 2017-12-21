@@ -108,7 +108,7 @@ public extension Tensor {
 
     /// Initialize a tensor from a tensor slice
     /// - parameter slice: tensor slice
-    init(_ slice: RankedTensorSlice<Rank>) {
+    init(_ slice: TensorSlice<Rank>) {
         self.init(shape: slice.shape, units: slice.units)
     }
 }
@@ -181,7 +181,7 @@ public extension Tensor where Rank.UnitType : FloatingPoint {
 extension Tensor : RandomAccessCollection {
     public typealias Index = Int
     public typealias Element = ElementTensor
-    public typealias SubSequence = RankedTensorSlice<Rank>
+    public typealias SubSequence = TensorSlice<Rank>
 
     /// Access the scalar element or element tensor at an index
     public subscript(index: Int) -> Element {
