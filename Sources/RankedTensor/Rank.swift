@@ -26,10 +26,10 @@ public protocol StaticRank {
     associatedtype ElementTensor
     associatedtype ArrayLiteralElement
     static var rank: UInt { get }
-    static func makeTensor(from literal: [ArrayLiteralElement]) -> RankedTensor<Self>
-    static func element(of tensor: RankedTensor<Self>, at index: Int) -> ElementTensor
+    static func makeTensor(from literal: [ArrayLiteralElement]) -> Tensor<Self>
+    static func element(of tensor: Tensor<Self>, at index: Int) -> ElementTensor
     static func element(of tensor: RankedTensorSlice<Self>, at index: Int) -> ElementTensor
-    static func updateElement(_ newElement: ElementTensor, at index: Int, in tensor: inout RankedTensor<Self>)
+    static func updateElement(_ newElement: ElementTensor, at index: Int, in tensor: inout Tensor<Self>)
     static func updateElement(_ newElement: ElementTensor, at index: Int, in tensor: inout RankedTensorSlice<Self>)
 }
 
@@ -59,47 +59,47 @@ extension StaticRank {
     }
 }
 
-public struct R1<T> : StaticRank {
+public struct Rank1<T> : StaticRank {
     public typealias UnitType = T
     public typealias Shape = Shape1D
     public typealias ElementTensor = T
     public typealias ArrayLiteralElement = T
     public static var rank: UInt { return 1 }
 
-    public static func makeTensor(from literal: [T]) -> RankedTensor<R1<T>> {
-        return RankedTensor<R1<T>>(shape: (UInt(literal.count)), units: ContiguousArray(literal))
+    public static func makeTensor(from literal: [T]) -> Tensor<Rank1<T>> {
+        return Tensor<Rank1<T>>(shape: (UInt(literal.count)), units: ContiguousArray(literal))
     }
 
-    public static func makeTensor(with elements: [T]) -> RankedTensor<R1<T>> {
+    public static func makeTensor(with elements: [T]) -> Tensor<Rank1<T>> {
         return makeTensor(from: elements)
     }
 
-    public static func element(of tensor: RankedTensor<R1<T>>, at index: Int) -> T {
+    public static func element(of tensor: Tensor<Rank1<T>>, at index: Int) -> T {
         return tensor.units[index]
     }
 
-    public static func element(of tensor: RankedTensorSlice<R1<T>>, at index: Int) -> T {
+    public static func element(of tensor: RankedTensorSlice<Rank1<T>>, at index: Int) -> T {
         let unitIndex = index.advanced(by: tensor.units.startIndex)
         return tensor.units[unitIndex]
     }
 
-    public static func updateElement(_ newElement: T, at index: Int, in tensor: inout RankedTensor<R1<T>>) {
+    public static func updateElement(_ newElement: T, at index: Int, in tensor: inout Tensor<Rank1<T>>) {
         tensor.base[index] = TensorSlice(scalar: newElement)
     }
 
-    public static func updateElement(_ newElement: T, at index: Int, in tensor: inout RankedTensorSlice<R1<T>>) {
+    public static func updateElement(_ newElement: T, at index: Int, in tensor: inout RankedTensorSlice<Rank1<T>>) {
         tensor.base[index] = TensorSlice(scalar: newElement)
     }
 }
 
-public struct R2<T> : StaticRank {
+public struct Rank2<T> : StaticRank {
     public typealias UnitType = T
     public typealias Shape = Shape2D
     public typealias ElementTensor = TensorSlice1D<T>
     public typealias ArrayLiteralElement = [T]
     public static var rank: UInt { return 2 }
 
-    public static func makeTensor(from literal: [[T]]) -> RankedTensor<R2<T>> {
+    public static func makeTensor(from literal: [[T]]) -> Tensor<Rank2<T>> {
         let dim0 = UInt(literal.count)
         guard dim0 > 0 else {
             fatalError("Array literal cannot be empty")
@@ -117,42 +117,42 @@ public struct R2<T> : StaticRank {
             }
             units.append(contentsOf: subArray)
         }
-        return RankedTensor<R2<T>>(shape: (dim0, dim1), units: units)
+        return Tensor<Rank2<T>>(shape: (dim0, dim1), units: units)
     }
 
-    public static func makeTensor(with elements: [RankedTensor<R1<T>>]) -> RankedTensor<R2<T>> {
+    public static func makeTensor(with elements: [Tensor<Rank1<T>>]) -> Tensor<Rank2<T>> {
         return makeTensor(from: elements.map { Array($0.units) })
     }
 
-    public static func makeTensor(with elements: [RankedTensorSlice<R1<T>>]) -> RankedTensor<R2<T>> {
+    public static func makeTensor(with elements: [RankedTensorSlice<Rank1<T>>]) -> Tensor<Rank2<T>> {
         return makeTensor(from: elements.map { Array($0.units) })
     }
 
-    public static func element(of tensor: RankedTensor<R2<T>>, at index: Int) -> RankedTensorSlice<R1<T>> {
+    public static func element(of tensor: Tensor<Rank2<T>>, at index: Int) -> RankedTensorSlice<Rank1<T>> {
         return TensorSlice1D(base: tensor, index: index)
     }
 
-    public static func element(of tensor: RankedTensorSlice<R2<T>>, at index: Int) -> RankedTensorSlice<R1<T>> {
+    public static func element(of tensor: RankedTensorSlice<Rank2<T>>, at index: Int) -> RankedTensorSlice<Rank1<T>> {
         return TensorSlice1D(base: tensor, index: index)
     }
 
-    public static func updateElement(_ newElement: RankedTensorSlice<R1<T>>, at index: Int, in tensor: inout RankedTensor<R2<T>>) {
+    public static func updateElement(_ newElement: RankedTensorSlice<Rank1<T>>, at index: Int, in tensor: inout Tensor<Rank2<T>>) {
         tensor.base[index] = newElement.base
     }
 
-    public static func updateElement(_ newElement: RankedTensorSlice<R1<T>>, at index: Int, in tensor: inout RankedTensorSlice<R2<T>>) {
+    public static func updateElement(_ newElement: RankedTensorSlice<Rank1<T>>, at index: Int, in tensor: inout RankedTensorSlice<Rank2<T>>) {
         tensor.base[index] = newElement.base
     }
 }
 
-public struct R3<T> : StaticRank {
+public struct Rank3<T> : StaticRank {
     public typealias UnitType = T
     public typealias Shape = Shape3D
     public typealias ElementTensor = TensorSlice2D<T>
     public typealias ArrayLiteralElement = [[T]]
     public static var rank: UInt { return 3 }
 
-    public static func makeTensor(from literal: [[[T]]]) -> RankedTensor<R3<T>> {
+    public static func makeTensor(from literal: [[[T]]]) -> Tensor<Rank3<T>> {
         let dim0 = UInt(literal.count)
         guard dim0 > 0 else {
             fatalError("Array literal cannot be empty")
@@ -179,42 +179,42 @@ public struct R3<T> : StaticRank {
                 units.append(contentsOf: subSubArray)
             }
         }
-        return RankedTensor<R3<T>>(shape: (dim0, dim1, dim2), units: units)
+        return Tensor<Rank3<T>>(shape: (dim0, dim1, dim2), units: units)
     }
 
-    public static func makeTensor(with elements: [RankedTensor<R2<T>>]) -> RankedTensor<R3<T>> {
+    public static func makeTensor(with elements: [Tensor<Rank2<T>>]) -> Tensor<Rank3<T>> {
         return makeTensor(from: elements.map { $0.map { Array($0.units) } })
     }
 
-    public static func makeTensor(with elements: [RankedTensorSlice<R2<T>>]) -> RankedTensor<R3<T>> {
+    public static func makeTensor(with elements: [RankedTensorSlice<Rank2<T>>]) -> Tensor<Rank3<T>> {
         return makeTensor(from: elements.map { $0.map { Array($0.units) } })
     }
 
-    public static func element(of tensor: RankedTensor<R3<T>>, at index: Int) -> RankedTensorSlice<R2<T>> {
+    public static func element(of tensor: Tensor<Rank3<T>>, at index: Int) -> RankedTensorSlice<Rank2<T>> {
         return TensorSlice2D(base: tensor, index: index)
     }
 
-    public static func element(of tensor: RankedTensorSlice<R3<T>>, at index: Int) -> RankedTensorSlice<R2<T>> {
+    public static func element(of tensor: RankedTensorSlice<Rank3<T>>, at index: Int) -> RankedTensorSlice<Rank2<T>> {
         return TensorSlice2D(base: tensor, index: index)
     }
 
-    public static func updateElement(_ newElement: RankedTensorSlice<R2<T>>, at index: Int, in tensor: inout RankedTensor<R3<T>>) {
+    public static func updateElement(_ newElement: RankedTensorSlice<Rank2<T>>, at index: Int, in tensor: inout Tensor<Rank3<T>>) {
         tensor.base[index] = newElement.base
     }
 
-    public static func updateElement(_ newElement: RankedTensorSlice<R2<T>>, at index: Int, in tensor: inout RankedTensorSlice<R3<T>>) {
+    public static func updateElement(_ newElement: RankedTensorSlice<Rank2<T>>, at index: Int, in tensor: inout RankedTensorSlice<Rank3<T>>) {
         tensor.base[index] = newElement.base
     }
 }
 
-public struct R4<T> : StaticRank {
+public struct Rank4<T> : StaticRank {
     public typealias UnitType = T
     public typealias Shape = Shape4D
     public typealias ElementTensor = TensorSlice3D<T>
     public typealias ArrayLiteralElement = [[[T]]]
     public static var rank: UInt { return 4 }
 
-    public static func makeTensor(from literal: [[[[T]]]]) -> RankedTensor<R4<T>> {
+    public static func makeTensor(from literal: [[[[T]]]]) -> Tensor<Rank4<T>> {
         let dim0 = UInt(literal.count)
         guard dim0 > 0 else {
             fatalError("Array literal cannot be empty")
@@ -250,30 +250,30 @@ public struct R4<T> : StaticRank {
                 }
             }
         }
-        return RankedTensor<R4<T>>(shape: (dim0, dim1, dim2, dim3), units: units)
+        return Tensor<Rank4<T>>(shape: (dim0, dim1, dim2, dim3), units: units)
     }
 
-    public static func makeTensor(with elements: [RankedTensor<R3<T>>]) -> RankedTensor<R4<T>> {
+    public static func makeTensor(with elements: [Tensor<Rank3<T>>]) -> Tensor<Rank4<T>> {
         return makeTensor(from: elements.map { $0.map { $0.map { Array($0.units) } } })
     }
 
-    public static func makeTensor(with elements: [RankedTensorSlice<R3<T>>]) -> RankedTensor<R4<T>> {
+    public static func makeTensor(with elements: [RankedTensorSlice<Rank3<T>>]) -> Tensor<Rank4<T>> {
         return makeTensor(from: elements.map { $0.map { $0.map { Array($0.units) } } })
     }
 
-    public static func element(of tensor: RankedTensor<R4<T>>, at index: Int) -> RankedTensorSlice<R3<T>> {
+    public static func element(of tensor: Tensor<Rank4<T>>, at index: Int) -> RankedTensorSlice<Rank3<T>> {
         return TensorSlice3D(base: tensor, index: index)
     }
 
-    public static func element(of tensor: RankedTensorSlice<R4<T>>, at index: Int) -> RankedTensorSlice<R3<T>> {
+    public static func element(of tensor: RankedTensorSlice<Rank4<T>>, at index: Int) -> RankedTensorSlice<Rank3<T>> {
         return TensorSlice3D(base: tensor, index: index)
     }
 
-    public static func updateElement(_ newElement: RankedTensorSlice<R3<T>>, at index: Int, in tensor: inout RankedTensor<R4<T>>) {
+    public static func updateElement(_ newElement: RankedTensorSlice<Rank3<T>>, at index: Int, in tensor: inout Tensor<Rank4<T>>) {
         tensor.base[index] = newElement.base
     }
 
-    public static func updateElement(_ newElement: RankedTensorSlice<R3<T>>, at index: Int, in tensor: inout RankedTensorSlice<R4<T>>) {
+    public static func updateElement(_ newElement: RankedTensorSlice<Rank3<T>>, at index: Int, in tensor: inout RankedTensorSlice<Rank4<T>>) {
         tensor.base[index] = newElement.base
     }
 }

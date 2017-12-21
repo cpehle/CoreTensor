@@ -25,7 +25,7 @@ import struct CoreTensor.TensorSlice
 public struct RankedTensorSlice<Rank: StaticRank> : RankedTensorProtocol {
     public typealias UnitType = Rank.UnitType
     public typealias Shape = Rank.Shape
-    public typealias BaseForm = RankedTensor<Rank>
+    public typealias BaseForm = Tensor<Rank>
     public typealias ElementTensor = Rank.ElementTensor
 
     internal var base: TensorSlice<UnitType>
@@ -89,7 +89,7 @@ public extension RankedTensorSlice where Shape == Shape1D {
 }
 
 extension RankedTensorSlice {
-    init<S>(base: RankedTensor<S>, indices: [Int]) where S.UnitType == UnitType {
+    init<S>(base: Tensor<S>, indices: [Int]) where S.UnitType == UnitType {
         self.init(base: TensorSlice(base: base.base, indices: indices))
     }
 
@@ -99,11 +99,11 @@ extension RankedTensorSlice {
 }
 
 public extension RankedTensorSlice {
-    init(_ base: RankedTensor<Rank>) {
+    init(_ base: Tensor<Rank>) {
         self.init(base: TensorSlice(base.base))
     }
 
-    init(base: RankedTensor<Rank>, bounds: CountableRange<Int>?) {
+    init(base: Tensor<Rank>, bounds: CountableRange<Int>?) {
         self.init(base: TensorSlice(base: base.base, bounds: bounds))
     }
 
@@ -111,7 +111,7 @@ public extension RankedTensorSlice {
         self.init(base: TensorSlice(base: base.base, bounds: bounds))
     }
 
-    init<S>(base: RankedTensor<S>, index: Int)
+    init<S>(base: Tensor<S>, index: Int)
         where S.ElementTensor == RankedTensorSlice, S.UnitType == UnitType
     {
         self.init(base: TensorSlice(base: base.base, index: index))
@@ -129,21 +129,21 @@ public extension RankedTensorSlice {
     /// - parameter shape: tensor shape
     /// - parameter elements: slice of existing elements in row-major order
     internal init(shape: Rank.Shape, units: ContiguousArray<UnitType>) {
-        self.init(RankedTensor(shape: shape, units: units))
+        self.init(Tensor(shape: shape, units: units))
     }
 
     /// Allocate and initialize a tensor to a repeated value
     /// - parameter shape: tensor shape
     /// - parameter repeating: repeated value
     init(shape: Rank.Shape, repeating repeatedValue: UnitType) {
-        self.init(RankedTensor(shape: shape, repeating: repeatedValue))
+        self.init(Tensor(shape: shape, repeating: repeatedValue))
     }
 
     /// Allocate and initialize a tensor using the factory function
     /// - parameter shape: tensor shape
     /// - parameter supplier: factory function providing values lazily
     init(shape: Rank.Shape, supplier: () -> UnitType) {
-        self.init(RankedTensor(shape: shape, supplier: supplier))
+        self.init(Tensor(shape: shape, supplier: supplier))
     }
 
     /// Initialize a tensor from a sequence of elements in row-major order
@@ -153,7 +153,7 @@ public extension RankedTensorSlice {
     init<S: Sequence>(shape: Shape, units: S,
                       vacancySupplier supplier: (() -> UnitType)? = nil)
         where S.Element == UnitType {
-            self.init(RankedTensor(shape: shape, units: units, vacancySupplier: supplier))
+            self.init(Tensor(shape: shape, units: units, vacancySupplier: supplier))
     }
 }
 
@@ -175,17 +175,17 @@ public extension RankedTensorSlice {
 
 public extension RankedTensorSlice where Rank.UnitType : Strideable {
     init(shape: Shape, unitsIncreasingFrom lowerBound: UnitType) {
-        self.init(RankedTensor(shape: shape, unitsIncreasingFrom: lowerBound))
+        self.init(Tensor(shape: shape, unitsIncreasingFrom: lowerBound))
     }
 }
 
 public extension RankedTensorSlice where Rank.UnitType : Strideable, Rank.UnitType.Stride : SignedInteger, Rank.Shape == (UInt) {
     init(scalarElementsIn bounds: CountableRange<UnitType>) {
-        self.init(RankedTensor(scalarElementsIn: bounds))
+        self.init(Tensor(scalarElementsIn: bounds))
     }
 
     init(scalarElementsIn bounds: CountableClosedRange<UnitType>) {
-        self.init(RankedTensor(scalarElementsIn: bounds))
+        self.init(Tensor(scalarElementsIn: bounds))
     }
 }
 
@@ -271,10 +271,10 @@ extension RankedTensorSlice : TextOutputStreamable {
     }
 }
 
-public typealias TensorSlice1D<T> = RankedTensorSlice<R1<T>>
-public typealias TensorSlice2D<T> = RankedTensorSlice<R2<T>>
-public typealias TensorSlice3D<T> = RankedTensorSlice<R3<T>>
-public typealias TensorSlice4D<T> = RankedTensorSlice<R4<T>>
+public typealias TensorSlice1D<T> = RankedTensorSlice<Rank1<T>>
+public typealias TensorSlice2D<T> = RankedTensorSlice<Rank2<T>>
+public typealias TensorSlice3D<T> = RankedTensorSlice<Rank3<T>>
+public typealias TensorSlice4D<T> = RankedTensorSlice<Rank4<T>>
 
 public typealias VectorSlice<T> = TensorSlice1D<T>
 public typealias MatrixSlice<T> = TensorSlice2D<T>
