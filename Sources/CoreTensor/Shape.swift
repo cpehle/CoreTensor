@@ -190,7 +190,8 @@ public func !~(lhs: TensorShape?, rhs: TensorShape?) -> Bool {
 ///   - rhs: right hand side
 ///   - body: closure making use of the the new dimensions
 /// - Returns: pair of conformed shapes
-public func conformedShapes(_ lhs: TensorShape, _ rhs: TensorShape) -> (TensorShape, TensorShape) {
+public func conformedShapes(
+    _ lhs: TensorShape, _ rhs: TensorShape) -> (TensorShape, TensorShape) {
     let lhs = lhs.simplified()
     let rhs = rhs.simplified()
     if lhs.rank == rhs.rank { return (lhs, rhs) }
@@ -236,7 +237,7 @@ public extension TensorShape {
 
     /// Insert a dimension of 1 at a given index
     func paddingDimension(at index: Int) -> TensorShape {
-        precondition(indices.contains(index) || endIndex == index,
+        precondition((startIndex...endIndex).contains(index),
                      "Index out of bounds")
         var newDims = dimensions
         newDims.insert(1, at: index)
