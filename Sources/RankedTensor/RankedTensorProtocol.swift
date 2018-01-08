@@ -24,15 +24,20 @@ public protocol RankedTensorProtocol : ShapedArrayProtocol {
     var dynamicShape: TensorShape { get }
     init(shape: Rank.Shape, repeating repeatedValue: UnitType)
     init(shape: Rank.Shape, supplier: () -> UnitType)
-    init<S: Sequence>(shape: Shape, units: S, vacancySupplier supplier: (() -> UnitType)?) where S.Element == UnitType
+    init<S: Sequence>(
+        shape: Shape, units: S,
+        vacancySupplier supplier: (() -> UnitType)?) where S.Element == UnitType
 }
 
 public extension RankedTensorProtocol where UnitType : Equatable {
-    static func ==<T: RankedTensorProtocol>(lhs: Self, rhs: T) -> Bool where T.UnitType == UnitType {
-        return lhs.dynamicShape == rhs.dynamicShape && lhs.units.elementsEqual(rhs.units)
+    static func ==<T: RankedTensorProtocol>(lhs: Self, rhs: T) -> Bool
+        where T.UnitType == UnitType {
+        return lhs.dynamicShape == rhs.dynamicShape &&
+            lhs.units.elementsEqual(rhs.units)
     }
 
-    func elementsEqual<T: RankedTensorProtocol>(_ other: T) -> Bool where T.UnitType == UnitType {
+    func elementsEqual<T: RankedTensorProtocol>(_ other: T) -> Bool
+        where T.UnitType == UnitType {
         return self == other
     }
 }

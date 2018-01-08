@@ -83,18 +83,21 @@ public extension TensorSlice {
 
 public extension TensorSlice where Shape == Shape1D {
     /// Initialize a vector from units
-    init<C: Collection>(_ units: C) where C.Element == UnitType, C.IndexDistance == Int {
+    init<C: Collection>(_ units: C)
+        where C.Element == UnitType, C.IndexDistance == Int {
         self.init(shape: (UInt(units.count)), units: units)
     }
 }
 
 extension TensorSlice {
     init<S>(base: Tensor<S>, indices: [Int]) where S.UnitType == UnitType {
-        self.init(base: CoreTensor.TensorSlice(base: base.base, indices: indices))
+        self.init(base: CoreTensor.TensorSlice(base: base.base,
+                                               indices: indices))
     }
 
     init<S>(base: TensorSlice<S>, indices: [Int]) where S.UnitType == UnitType {
-        self.init(base: CoreTensor.TensorSlice(base: base.base, indices: indices))
+        self.init(base: CoreTensor.TensorSlice(base: base.base,
+                                               indices: indices))
     }
 }
 
@@ -125,7 +128,8 @@ public extension TensorSlice {
 }
 
 public extension TensorSlice {
-    /// Initialize a tensor using an existing slice of elements in row-major order
+    /// Initialize a tensor using an existing slice of elements in row-major
+    /// order
     /// - parameter shape: tensor shape
     /// - parameter elements: slice of existing elements in row-major order
     internal init(shape: Rank.Shape, units: ContiguousArray<UnitType>) {
@@ -153,7 +157,8 @@ public extension TensorSlice {
     init<S: Sequence>(shape: Shape, units: S,
                       vacancySupplier supplier: (() -> UnitType)? = nil)
         where S.Element == UnitType {
-            self.init(Tensor(shape: shape, units: units, vacancySupplier: supplier))
+            self.init(Tensor(shape: shape, units: units,
+                             vacancySupplier: supplier))
     }
 }
 
@@ -164,11 +169,13 @@ public extension TensorSlice {
 }
 
 public extension TensorSlice {
-    func isSimilar<A>(to other: TensorSlice<A>) -> Bool where A.UnitType == UnitType {
+    func isSimilar<A>(to other: TensorSlice<A>) -> Bool
+        where A.UnitType == UnitType {
         return base.isSimilar(to: other.base)
     }
 
-    func isIsomorphic<A>(to other: TensorSlice<A>) -> Bool where A.UnitType == UnitType {
+    func isIsomorphic<A>(to other: TensorSlice<A>) -> Bool
+        where A.UnitType == UnitType {
         return base.isIsomorphic(to: other.base)
     }
 }
@@ -179,7 +186,11 @@ public extension TensorSlice where Rank.UnitType : Strideable {
     }
 }
 
-public extension TensorSlice where Rank.UnitType : Strideable, Rank.UnitType.Stride : SignedInteger, Rank.Shape == (UInt) {
+public extension TensorSlice
+    where Rank.UnitType : Strideable,
+          Rank.UnitType.Stride : SignedInteger,
+          Rank.Shape == (UInt)
+{
     init(scalarElementsIn bounds: CountableRange<UnitType>) {
         self.init(Tensor(scalarElementsIn: bounds))
     }
@@ -239,34 +250,43 @@ extension TensorSlice : RandomAccessCollection {
     /// Access the subtensor specified by a contiguous range of indices
     public subscript(bounds: Range<Int>) -> SubSequence {
         get {
-            precondition(indices ~= bounds.lowerBound && indices ~= bounds.upperBound - 1,
-                         "Slice indices are out of bounds")
+            precondition(
+                indices ~= bounds.lowerBound
+                    && indices ~= bounds.upperBound - 1,
+                "Slice indices are out of bounds")
             return SubSequence(base: self, bounds: CountableRange(bounds))
         }
         set {
-            precondition(indices ~= bounds.lowerBound && indices ~= bounds.upperBound - 1,
-                         "Slice indices are out of bounds")
-            precondition(newValue.dynamicShape == dynamicShape.dropFirst().prepending(bounds.count),
-                         "Shape mismatch")
+            precondition(
+                indices ~= bounds.lowerBound
+                    && indices ~= bounds.upperBound - 1,
+                "Slice indices are out of bounds")
+            precondition(
+                newValue.dynamicShape ==
+                    dynamicShape.dropFirst().prepending(bounds.count),
+                "Shape mismatch")
             base[bounds] = newValue.base
         }
     }
 }
 
 public extension TensorSlice {
-    func withUnsafeBufferPointer<Result>
-        (_ body: (UnsafeBufferPointer<UnitType>) throws -> Result) rethrows -> Result {
+    func withUnsafeBufferPointer<Result>(
+        _ body: (UnsafeBufferPointer<UnitType>) throws -> Result
+    ) rethrows -> Result {
         return try base.withUnsafeBufferPointer(body)
     }
 
-    mutating func withUnsafeMutableBufferPointer<Result>
-        (_ body: (inout UnsafeMutableBufferPointer<UnitType>) throws -> Result) rethrows -> Result {
+    mutating func withUnsafeMutableBufferPointer<Result>(
+        _ body: (inout UnsafeMutableBufferPointer<UnitType>) throws -> Result
+    ) rethrows -> Result {
         return try base.withUnsafeMutableBufferPointer(body)
     }
 }
 
 extension TensorSlice : TextOutputStreamable {
-    public func write<Target>(to target: inout Target) where Target : TextOutputStream {
+    public func write<Target>(to target: inout Target)
+        where Target : TextOutputStream {
         return base.write(to: &target)
     }
 }

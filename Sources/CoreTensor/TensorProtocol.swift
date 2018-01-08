@@ -17,7 +17,8 @@
 //  limitations under the License.
 //
 
-public protocol ShapedArrayProtocol : RandomAccessCollection where Index == Int {
+public protocol ShapedArrayProtocol : RandomAccessCollection
+    where Index == Int {
     associatedtype UnitType
     associatedtype UnitSequenceType: RandomAccessCollection
         where UnitSequenceType.Element == UnitType,
@@ -33,10 +34,12 @@ public protocol ShapedArrayProtocol : RandomAccessCollection where Index == Int 
     var unitCountPerElement: IndexDistance { get }
     init(shape: Shape, repeating repeatedValue: UnitType)
     subscript(index: Index) -> Element { get }
-    func withUnsafeBufferPointer<Result>
-        (_ body: (UnsafeBufferPointer<UnitType>) throws -> Result) rethrows -> Result
-    mutating func withUnsafeMutableBufferPointer<Result>
-        (_ body: (inout UnsafeMutableBufferPointer<UnitType>) throws -> Result) rethrows -> Result
+    func withUnsafeBufferPointer<Result>(
+        _ body: (UnsafeBufferPointer<UnitType>) throws -> Result
+    ) rethrows -> Result
+    mutating func withUnsafeMutableBufferPointer<Result>(
+        _ body: (inout UnsafeMutableBufferPointer<UnitType>) throws -> Result
+    ) rethrows -> Result
 }
 
 public extension ShapedArrayProtocol {
@@ -61,7 +64,9 @@ public extension ShapedArrayProtocol {
 }
 
 public protocol TensorProtocol : ShapedArrayProtocol
-    where Shape == TensorShape, Element : TensorProtocol, Element.UnitType == UnitType {
+    where Shape == TensorShape,
+          Element : TensorProtocol,
+          Element.UnitType == UnitType {
     var elementShape: Shape? { get }
     subscript(index: TensorIndex) -> TensorSlice<UnitType> { get }
     init()
@@ -69,8 +74,9 @@ public protocol TensorProtocol : ShapedArrayProtocol
     init(scalar: UnitType)
     init<S: Sequence>(elementShape: TensorShape, elements: S)
         where S.Element : TensorProtocol, S.Element.UnitType == UnitType
-    init<S: Sequence>(shape: TensorShape, units: S, vacancySupplier supplier: (() -> UnitType)?)
-        where S.Iterator.Element == UnitType
+    init<S: Sequence>(shape: TensorShape, units: S,
+                      vacancySupplier supplier: (() -> UnitType)?)
+        where S.Element == UnitType
     init(shape: TensorShape, repeating repeatedValue: UnitType)
     init(shape: TensorShape, supplier: () -> UnitType)
     init(_ slice: TensorSlice<UnitType>)
@@ -101,11 +107,13 @@ public extension TensorProtocol where UnitType : Strideable {
 }
 
 public extension TensorProtocol where UnitType : Equatable {
-    static func ==<T: TensorProtocol>(lhs: Self, rhs: T) -> Bool where T.UnitType == UnitType {
+    static func ==<T: TensorProtocol>(lhs: Self, rhs: T) -> Bool
+        where T.UnitType == UnitType {
         return lhs.shape == rhs.shape && lhs.units.elementsEqual(rhs.units)
     }
 
-    func elementsEqual<T: TensorProtocol>(_ other: T) -> Bool where T.UnitType == UnitType {
+    func elementsEqual<T: TensorProtocol>(_ other: T) -> Bool
+        where T.UnitType == UnitType {
         return self == other
     }
 }
@@ -115,7 +123,8 @@ internal extension ShapedArrayProtocol {
         return unitCountPerElement * index
     }
 
-    func unitSubrange(from tensorSubrange: CountableRange<Int>) -> CountableRange<Int> {
+    func unitSubrange(
+        from tensorSubrange: CountableRange<Int>) -> CountableRange<Int> {
         return unitIndex(fromIndex: tensorSubrange.lowerBound)
             ..< unitIndex(fromIndex: tensorSubrange.upperBound)
     }

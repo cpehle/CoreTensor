@@ -35,7 +35,7 @@ public struct TensorShape: ExpressibleByArrayLiteral {
     /// Initialize with sizes of dimensions. The rank of the tensor
     /// is the length of the parameter list.
     /// - parameter dimensions: sizes of dimensions
-    public init<C: Collection>(_ dimensions: C) where C.Iterator.Element == Int {
+    public init<C: Collection>(_ dimensions: C) where C.Element == Int {
         self.dimensions = Array(dimensions)
     }
 
@@ -176,8 +176,8 @@ public func !~(lhs: TensorShape?, rhs: TensorShape?) -> Bool {
 /// Align shape dimensions and add 1-paddings when necesssary
 /// - Steps:
 ///   1. Simplify (drop higher dimensional paddings and suffix starting with 0)
-///   2. Add padding to either left-hand side or right-hand side to match the rank
-///      of the other side
+///   2. Add padding to either left-hand side or right-hand side to match the
+///      rank of the other side
 /// - Example:
 ///   (1x3x5, 5x1)
 ///   => (3x5, 5x1) simplified, no padding needed
@@ -258,16 +258,18 @@ public extension TensorShape {
         return prefix(upTo: firstZeroIndex)
     }
 
-    /// Returns the simplified shape, i.e. shape after dropping higher 1-paddings and
-    /// suffix starting with 0
+    /// Returns the simplified shape, i.e. shape after dropping higher
+    /// 1-paddings and suffix starting with 0
     func simplified() -> TensorShape {
         return droppingHigherPaddings().droppingEmptySuffix()
     }
 
     /// Determine if self can be concatenated with other
-    func isConcatenable(with other: TensorShape, alongDimension dim: Int = 0) -> Bool {
-        return dimensions.prefix(dim) == other.dimensions.prefix(dim)
-            && dimensions.suffix(from: dim+1) == other.dimensions.suffix(from: dim+1)
+    func isConcatenable(with other: TensorShape,
+                        alongDimension dim: Int = 0) -> Bool {
+        return dimensions.prefix(dim) == other.dimensions.prefix(dim) &&
+            dimensions.suffix(from: dim+1) ==
+              other.dimensions.suffix(from: dim+1)
     }
 
     /// Concatenate two tensor shapes that have every dimension equal except
@@ -278,7 +280,9 @@ public extension TensorShape {
     /// - Returns: concatenated shape, or nil if dimensions don't match
     func concatenating(with other: TensorShape,
                        alongDimension dim: Int = 0) -> TensorShape? {
-        guard isConcatenable(with: other, alongDimension: dim) else { return nil }
+        guard isConcatenable(with: other, alongDimension: dim) else {
+            return nil
+        }
         var newShape = self
         newShape[dim] = self[dim] + other[dim]
         return newShape
@@ -339,10 +343,13 @@ public extension TensorShape {
         /// Rank must be equal
         guard rank == other.rank else { return nil }
         var shape: TensorShape = []
-        /// For each pair of corresponding dimensions `l` and `r`, it must either
-        /// be the case that `l` is equal to `r`, or that either of the two is 1.
+        /// For each pair of corresponding dimensions `l` and `r`, it must
+        /// either be the case that `l` is equal to `r`, or that either of the
+        /// two is 1.
         for (l, r) in zip(self, other) {
-            if l == 1 || l == r { shape.dimensions.append(r) } else if r == 1 { shape.dimensions.append(l) } else { return nil }
+            if l == 1 || l == r { shape.dimensions.append(r) }
+            else if r == 1 { shape.dimensions.append(l) }
+            else { return nil }
         }
         return shape
     }
@@ -356,7 +363,7 @@ public extension TensorShape {
 // MARK: - Sequence helpers
 extension Sequence {
     /// Returns true if all elements satisfy the predicate
-    func forAll(_ predicate: (Iterator.Element) -> Bool) -> Bool {
+    func forAll(_ predicate: (Element) -> Bool) -> Bool {
         return reduce(true, { $0 && predicate($1) })
     }
 }

@@ -28,9 +28,12 @@ public protocol StaticRank {
     static var rank: UInt { get }
     static func makeTensor(from literal: [ArrayLiteralElement]) -> Tensor<Self>
     static func element(of tensor: Tensor<Self>, at index: Int) -> ElementTensor
-    static func element(of tensor: TensorSlice<Self>, at index: Int) -> ElementTensor
-    static func updateElement(_ newElement: ElementTensor, at index: Int, in tensor: inout Tensor<Self>)
-    static func updateElement(_ newElement: ElementTensor, at index: Int, in tensor: inout TensorSlice<Self>)
+    static func element(of tensor: TensorSlice<Self>,
+                        at index: Int) -> ElementTensor
+    static func updateElement(_ newElement: ElementTensor,
+                              at index: Int, in tensor: inout Tensor<Self>)
+    static func updateElement(_ newElement: ElementTensor,
+                              at index: Int, in tensor: inout TensorSlice<Self>)
 }
 
 public typealias Shape1D = (UInt)
@@ -67,27 +70,32 @@ public struct Rank1<T> : StaticRank {
     public static var rank: UInt { return 1 }
 
     public static func makeTensor(from literal: [T]) -> Tensor<Rank1<T>> {
-        return Tensor<Rank1<T>>(shape: (UInt(literal.count)), units: ContiguousArray(literal))
+        return Tensor<Rank1<T>>(shape: (UInt(literal.count)),
+                                units: ContiguousArray(literal))
     }
 
     public static func makeTensor(with elements: [T]) -> Tensor<Rank1<T>> {
         return makeTensor(from: elements)
     }
 
-    public static func element(of tensor: Tensor<Rank1<T>>, at index: Int) -> T {
+    public static func element(of tensor: Tensor<Rank1<T>>,
+                               at index: Int) -> T {
         return tensor.units[index]
     }
 
-    public static func element(of tensor: TensorSlice<Rank1<T>>, at index: Int) -> T {
+    public static func element(of tensor: TensorSlice<Rank1<T>>,
+                               at index: Int) -> T {
         let unitIndex = index.advanced(by: tensor.units.startIndex)
         return tensor.units[unitIndex]
     }
 
-    public static func updateElement(_ newElement: T, at index: Int, in tensor: inout Tensor<Rank1<T>>) {
+    public static func updateElement(_ newElement: T, at index: Int,
+                                     in tensor: inout Tensor<Rank1<T>>) {
         tensor.base[index] = CoreTensor.TensorSlice(scalar: newElement)
     }
 
-    public static func updateElement(_ newElement: T, at index: Int, in tensor: inout TensorSlice<Rank1<T>>) {
+    public static func updateElement(_ newElement: T, at index: Int,
+                                     in tensor: inout TensorSlice<Rank1<T>>) {
         tensor.base[index] = CoreTensor.TensorSlice(scalar: newElement)
     }
 }
@@ -113,34 +121,46 @@ public struct Rank2<T> : StaticRank {
         units.reserveCapacity(Int(contSize))
         for subArray in literal {
             guard subArray.count == dim1 else {
-                fatalError("Element tensors in the 2nd dimension have mismatching shapes")
+                fatalError("""
+                    Element tensors in the 2nd dimension have mismatching shapes
+                    """)
             }
             units.append(contentsOf: subArray)
         }
         return Tensor<Rank2<T>>(shape: (dim0, dim1), units: units)
     }
 
-    public static func makeTensor(with elements: [Tensor<Rank1<T>>]) -> Tensor<Rank2<T>> {
+    public static func makeTensor(
+        with elements: [Tensor<Rank1<T>>]) -> Tensor<Rank2<T>> {
         return makeTensor(from: elements.map { Array($0.units) })
     }
 
-    public static func makeTensor(with elements: [TensorSlice<Rank1<T>>]) -> Tensor<Rank2<T>> {
+    public static func makeTensor(
+        with elements: [TensorSlice<Rank1<T>>]) -> Tensor<Rank2<T>> {
         return makeTensor(from: elements.map { Array($0.units) })
     }
 
-    public static func element(of tensor: Tensor<Rank2<T>>, at index: Int) -> TensorSlice<Rank1<T>> {
+    public static func element(
+        of tensor: Tensor<Rank2<T>>, at index: Int) -> TensorSlice<Rank1<T>> {
         return TensorSlice1D(base: tensor, index: index)
     }
 
-    public static func element(of tensor: TensorSlice<Rank2<T>>, at index: Int) -> TensorSlice<Rank1<T>> {
+    public static func element(
+        of tensor: TensorSlice<Rank2<T>>,
+        at index: Int
+    ) -> TensorSlice<Rank1<T>> {
         return TensorSlice1D(base: tensor, index: index)
     }
 
-    public static func updateElement(_ newElement: TensorSlice<Rank1<T>>, at index: Int, in tensor: inout Tensor<Rank2<T>>) {
+    public static func updateElement(_ newElement: TensorSlice<Rank1<T>>,
+                                     at index: Int,
+                                     in tensor: inout Tensor<Rank2<T>>) {
         tensor.base[index] = newElement.base
     }
 
-    public static func updateElement(_ newElement: TensorSlice<Rank1<T>>, at index: Int, in tensor: inout TensorSlice<Rank2<T>>) {
+    public static func updateElement(_ newElement: TensorSlice<Rank1<T>>,
+                                     at index: Int,
+                                     in tensor: inout TensorSlice<Rank2<T>>) {
         tensor.base[index] = newElement.base
     }
 }
@@ -170,11 +190,16 @@ public struct Rank3<T> : StaticRank {
         units.reserveCapacity(Int(contSize))
         for subArray in literal {
             guard subArray.count == dim1 else {
-                fatalError("Element tensors in the 2nd dimension have mismatching shapes")
+                fatalError("""
+                    Element tensors in the 2nd dimension have mismatching shapes
+                    """)
             }
             for subSubArray in subArray {
                 guard subSubArray.count == dim2 else {
-                    fatalError("Element tensors in the 3nd dimension have mismatching shapes")
+                    fatalError("""
+                        Element tensors in the 3nd dimension have mismatching \
+                        shapes
+                    """)
                 }
                 units.append(contentsOf: subSubArray)
             }
@@ -182,27 +207,37 @@ public struct Rank3<T> : StaticRank {
         return Tensor<Rank3<T>>(shape: (dim0, dim1, dim2), units: units)
     }
 
-    public static func makeTensor(with elements: [Tensor<Rank2<T>>]) -> Tensor<Rank3<T>> {
+    public static func makeTensor(
+        with elements: [Tensor<Rank2<T>>]) -> Tensor<Rank3<T>> {
         return makeTensor(from: elements.map { $0.map { Array($0.units) } })
     }
 
-    public static func makeTensor(with elements: [TensorSlice<Rank2<T>>]) -> Tensor<Rank3<T>> {
+    public static func makeTensor(
+        with elements: [TensorSlice<Rank2<T>>]) -> Tensor<Rank3<T>> {
         return makeTensor(from: elements.map { $0.map { Array($0.units) } })
     }
 
-    public static func element(of tensor: Tensor<Rank3<T>>, at index: Int) -> TensorSlice<Rank2<T>> {
+    public static func element(
+        of tensor: Tensor<Rank3<T>>, at index: Int) -> TensorSlice<Rank2<T>> {
         return TensorSlice2D(base: tensor, index: index)
     }
 
-    public static func element(of tensor: TensorSlice<Rank3<T>>, at index: Int) -> TensorSlice<Rank2<T>> {
+    public static func element(of tensor: TensorSlice<Rank3<T>>,
+                               at index: Int) -> TensorSlice<Rank2<T>> {
         return TensorSlice2D(base: tensor, index: index)
     }
 
-    public static func updateElement(_ newElement: TensorSlice<Rank2<T>>, at index: Int, in tensor: inout Tensor<Rank3<T>>) {
+    public static func updateElement(
+        _ newElement: TensorSlice<Rank2<T>>,
+        at index: Int, in tensor: inout Tensor<Rank3<T>>
+    ) {
         tensor.base[index] = newElement.base
     }
 
-    public static func updateElement(_ newElement: TensorSlice<Rank2<T>>, at index: Int, in tensor: inout TensorSlice<Rank3<T>>) {
+    public static func updateElement(
+        _ newElement: TensorSlice<Rank2<T>>,
+        at index: Int, in tensor: inout TensorSlice<Rank3<T>>
+    ) {
         tensor.base[index] = newElement.base
     }
 }
@@ -236,15 +271,23 @@ public struct Rank4<T> : StaticRank {
         units.reserveCapacity(Int(contSize))
         for subArray in literal {
             guard subArray.count == dim1 else {
-                fatalError("Element tensors in the 2nd dimension have mismatching shapes")
+                fatalError("""
+                    Element tensors in the 2nd dimension have mismatching shapes
+                    """)
             }
             for subSubArray in subArray {
                 guard subSubArray.count == dim2 else {
-                    fatalError("Element tensors in the 3nd dimension have mismatching shapes")
+                    fatalError("""
+                        Element tensors in the 3nd dimension have mismatching \
+                        shapes
+                        """)
                 }
                 for subSubSubArray in subSubArray {
                     guard subSubSubArray.count == dim3 else {
-                        fatalError("Element tensors in the 4nd dimension have mismatching shapes")
+                        fatalError("""
+                            Element tensors in the 4nd dimension have \
+                            mismatching shapes
+                            """)
                     }
                     units.append(contentsOf: subSubSubArray)
                 }
@@ -253,27 +296,41 @@ public struct Rank4<T> : StaticRank {
         return Tensor<Rank4<T>>(shape: (dim0, dim1, dim2, dim3), units: units)
     }
 
-    public static func makeTensor(with elements: [Tensor<Rank3<T>>]) -> Tensor<Rank4<T>> {
-        return makeTensor(from: elements.map { $0.map { $0.map { Array($0.units) } } })
+    public static func makeTensor(
+        with elements: [Tensor<Rank3<T>>]) -> Tensor<Rank4<T>> {
+        return makeTensor(from: elements.map {
+            $0.map { $0.map { Array($0.units) } }
+        })
     }
 
-    public static func makeTensor(with elements: [TensorSlice<Rank3<T>>]) -> Tensor<Rank4<T>> {
-        return makeTensor(from: elements.map { $0.map { $0.map { Array($0.units) } } })
+    public static func makeTensor(
+        with elements: [TensorSlice<Rank3<T>>]) -> Tensor<Rank4<T>> {
+        return makeTensor(from: elements.map {
+            $0.map { $0.map { Array($0.units) } }
+        })
     }
 
-    public static func element(of tensor: Tensor<Rank4<T>>, at index: Int) -> TensorSlice<Rank3<T>> {
+    public static func element(of tensor: Tensor<Rank4<T>>,
+                               at index: Int) -> TensorSlice<Rank3<T>> {
         return TensorSlice3D(base: tensor, index: index)
     }
 
-    public static func element(of tensor: TensorSlice<Rank4<T>>, at index: Int) -> TensorSlice<Rank3<T>> {
+    public static func element(of tensor: TensorSlice<Rank4<T>>,
+                               at index: Int) -> TensorSlice<Rank3<T>> {
         return TensorSlice3D(base: tensor, index: index)
     }
 
-    public static func updateElement(_ newElement: TensorSlice<Rank3<T>>, at index: Int, in tensor: inout Tensor<Rank4<T>>) {
+    public static func updateElement(
+        _ newElement: TensorSlice<Rank3<T>>,
+        at index: Int, in tensor: inout Tensor<Rank4<T>>
+    ) {
         tensor.base[index] = newElement.base
     }
 
-    public static func updateElement(_ newElement: TensorSlice<Rank3<T>>, at index: Int, in tensor: inout TensorSlice<Rank4<T>>) {
+    public static func updateElement(
+        _ newElement: TensorSlice<Rank3<T>>,
+        at index: Int, in tensor: inout TensorSlice<Rank4<T>>
+    ) {
         tensor.base[index] = newElement.base
     }
 }

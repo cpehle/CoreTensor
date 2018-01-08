@@ -67,25 +67,29 @@ public extension Tensor {
         return base.capacity
     }
 
-    /// Initialize a tensor using an existing slice of elements in row-major order
+    /// Initialize a tensor using an existing slice of elements in row-major
+    /// order
     /// - parameter shape: tensor shape
     /// - parameter elements: slice of existing elements in row-major order
     internal init(shape: Shape, units: ContiguousArray<UnitType>) {
-        self.init(base: CoreTensor.Tensor(shape: Rank.dynamicShape(from: shape), units: units))
+        self.init(base: CoreTensor.Tensor(shape: Rank.dynamicShape(from: shape),
+                                          units: units))
     }
 
     /// Allocate and initialize a tensor to a repeated value
     /// - parameter shape: tensor shape
     /// - parameter repeating: repeated value
     init(shape: Shape, repeating repeatedValue: UnitType) {
-        self.init(base: CoreTensor.Tensor(shape: Rank.dynamicShape(from: shape), repeating: repeatedValue))
+        self.init(base: CoreTensor.Tensor(shape: Rank.dynamicShape(from: shape),
+                                          repeating: repeatedValue))
     }
 
     /// Allocate and initialize a tensor using the factory function
     /// - parameter shape: tensor shape
     /// - parameter supplier: factory function providing values lazily
     init(shape: Shape, supplier: () -> UnitType) {
-        self.init(base: CoreTensor.Tensor(shape: Rank.dynamicShape(from: shape), supplier: supplier))
+        self.init(base: CoreTensor.Tensor(shape: Rank.dynamicShape(from: shape),
+                                          supplier: supplier))
     }
 
     /// Initialize a tensor from a sequence of elements in row-major order
@@ -97,11 +101,14 @@ public extension Tensor {
         where S.Element == UnitType {
             let contiguousSize = Rank.dynamicShape(from: shape).contiguousSize
             var slice = ContiguousArray(units.prefix(contiguousSize))
-            /// If elements fewer than required by the shape and supplier is provided
-            /// generate new elements using the supplier until vacancy is filled
+            /// If elements fewer than required by the shape and supplier is
+            /// provided generate new elements using the supplier until vacancy
+            /// is filled
             if slice.count < contiguousSize, let supplier = supplier {
                 slice.reserveCapacity(contiguousSize)
-                slice.append(contentsOf: (0..<contiguousSize).map { _ in supplier() })
+                slice.append(contentsOf: (0..<contiguousSize).map {
+                    _ in supplier()
+                })
             }
             self.init(shape: shape, units: slice)
     }
@@ -115,28 +122,35 @@ public extension Tensor {
 
 public extension Tensor where Shape == Shape1D {
     /// Initialize a vector from units
-    init<C: Collection>(_ units: C) where C.Element == UnitType, C.IndexDistance == Int {
+    init<C: Collection>(_ units: C)
+        where C.Element == UnitType, C.IndexDistance == Int {
         self.init(shape: (UInt(units.count)), units: units)
     }
 }
 
 public extension Tensor {
-    func isSimilar<S>(to other: Tensor<S>) -> Bool where S.UnitType == UnitType {
+    func isSimilar<S>(to other: Tensor<S>) -> Bool
+        where S.UnitType == UnitType {
         return base.isSimilar(to: other.base)
     }
 
-    func isIsomorphic<S>(to other: Tensor<S>) -> Bool where S.UnitType == UnitType {
+    func isIsomorphic<S>(to other: Tensor<S>) -> Bool
+        where S.UnitType == UnitType {
         return base.isIsomorphic(to: other.base)
     }
 }
 
 public extension Tensor where Rank.UnitType : Strideable {
     init(shape: Shape, unitsIncreasingFrom lowerBound: UnitType) {
-        self.init(base: CoreTensor.Tensor(shape: Rank.dynamicShape(from: shape), unitsIncreasingFrom: lowerBound))
+        self.init(base: CoreTensor.Tensor(shape: Rank.dynamicShape(from: shape),
+                                          unitsIncreasingFrom: lowerBound))
     }
 }
 
-public extension Tensor where Rank.UnitType : Strideable, Rank.UnitType.Stride : SignedInteger, Rank.Shape == (UInt) {
+public extension Tensor
+    where Rank.UnitType : Strideable,
+          Rank.UnitType.Stride : SignedInteger,
+          Rank.Shape == (UInt) {
     init(scalarElementsIn bounds: CountableRange<UnitType>) {
         self.init(base: CoreTensor.Tensor(scalarElementsIn: bounds))
     }
@@ -196,15 +210,21 @@ extension Tensor : RandomAccessCollection {
     /// Access the subtensor specified by a contiguous range of indices
     public subscript(bounds: Range<Int>) -> SubSequence {
         get {
-            precondition(indices ~= bounds.lowerBound && indices ~= bounds.upperBound - 1,
-                         "Slice indices are out of bounds")
+            precondition(
+                indices ~= bounds.lowerBound &&
+                    indices ~= bounds.upperBound - 1,
+                "Slice indices are out of bounds")
             return SubSequence(base: self, bounds: CountableRange(bounds))
         }
         set {
-            precondition(indices ~= bounds.lowerBound && indices ~= bounds.upperBound - 1,
-                         "Slice indices are out of bounds")
-            precondition(newValue.dynamicShape == dynamicShape.dropFirst().prepending(bounds.count),
-                         "Shape mismatch")
+            precondition(
+                indices ~= bounds.lowerBound &&
+                    indices ~= bounds.upperBound - 1,
+                "Slice indices are out of bounds")
+            precondition(
+                newValue.dynamicShape ==
+                    dynamicShape.dropFirst().prepending(bounds.count),
+                "Shape mismatch")
             base[bounds] = newValue.base
         }
     }
@@ -239,19 +259,22 @@ extension Tensor : RandomAccessCollection {
 }
 
 public extension Tensor {
-    func withUnsafeBufferPointer<Result>
-        (_ body: (UnsafeBufferPointer<UnitType>) throws -> Result) rethrows -> Result {
+    func withUnsafeBufferPointer<Result>(
+        _ body: (UnsafeBufferPointer<UnitType>) throws -> Result
+    ) rethrows -> Result {
         return try base.withUnsafeBufferPointer(body)
     }
 
-    mutating func withUnsafeMutableBufferPointer<Result>
-        (_ body: (inout UnsafeMutableBufferPointer<UnitType>) throws -> Result) rethrows -> Result {
+    mutating func withUnsafeMutableBufferPointer<Result>(
+        _ body: (inout UnsafeMutableBufferPointer<UnitType>) throws -> Result
+    ) rethrows -> Result {
         return try base.withUnsafeMutableBufferPointer(body)
     }
 }
 
 extension Tensor : TextOutputStreamable {
-    public func write<Target>(to target: inout Target) where Target : TextOutputStream {
+    public func write<Target>(to target: inout Target)
+        where Target : TextOutputStream {
         base.write(to: &target)
     }
 }

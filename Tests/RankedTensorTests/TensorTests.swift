@@ -115,9 +115,11 @@ class RankedTensorTests: XCTestCase {
         tensor[0] = TensorSlice2D<Int>(shape: (4, 5), repeating: 1)
         XCTAssertEqual(Array(tensor.units),
                        Array(repeating: 1, count: 20) + Array(20..<60))
-        tensor[0..<2] = TensorSlice3D<Int>(shape: (2, 4, 5), unitsIncreasingFrom: 0)
+        tensor[0..<2] = TensorSlice3D<Int>(shape: (2, 4, 5),
+                                           unitsIncreasingFrom: 0)
         XCTAssertEqual(Array(tensor.units), Array(0..<60))
-        tensor[0][1..<3] = TensorSlice2D<Int>(shape: (2, 5), unitsIncreasingFrom: 0)
+        tensor[0][1..<3] = TensorSlice2D<Int>(shape: (2, 5),
+                                              unitsIncreasingFrom: 0)
         XCTAssertEqual(Array(tensor.units),
                        Array((0..<5)) + Array((0..<10)) + Array(15..<60))
         for scalarIndex in tensor[0][0].indices {
@@ -132,7 +134,8 @@ class RankedTensorTests: XCTestCase {
         let rank3 = Tensor3D<Int>(shape: (2, 3, 2), unitsIncreasingFrom: 1)
         XCTAssertEqual("\(rank1)", "[1, 2, 3, 4, 5]")
         XCTAssertEqual("\(rank2)", "[[1, 2, 3], [4, 5, 6]]")
-        XCTAssertEqual("\(rank3)", "[[[1, 2], [3, 4], [5, 6]], [[7, 8], [9, 10], [11, 12]]]")
+        XCTAssertEqual("\(rank3)",
+            "[[[1, 2], [3, 4], [5, 6]], [[7, 8], [9, 10], [11, 12]]]")
     }
 
     func testLiteralConversion() {
@@ -155,4 +158,3 @@ class RankedTensorTests: XCTestCase {
     }
 
 }
-

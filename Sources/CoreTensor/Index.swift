@@ -29,7 +29,7 @@ public struct TensorIndex: ExpressibleByArrayLiteral {
         self.elements = indexElements
     }
 
-    public init<S: Sequence>(_ indexElements: S) where S.Iterator.Element == Int {
+    public init<S: Sequence>(_ indexElements: S) where S.Element == Int {
         self.elements = Array(indexElements)
     }
 
@@ -37,7 +37,8 @@ public struct TensorIndex: ExpressibleByArrayLiteral {
         self.elements = Array(repeating: repeatedValue, count: count)
     }
 
-    /// Compute the contiguous storage index from high-dimensional tensor indices
+    /// Compute the contiguous storage index from high-dimensional tensor
+    /// indices
     /// - parameter indices: tensor indices
     /// - returns: index in contiguous storage
     /// - note: the count of indices must equal the rank of the tensor
@@ -45,7 +46,8 @@ public struct TensorIndex: ExpressibleByArrayLiteral {
         /// Row-major order addressing
         let trimmedShape = shape.prefix(count)
         return elements.enumerated().reduce(0, { acc, next -> Int in
-            let stride = trimmedShape.isEmpty ? 0 : trimmedShape.dropFirst(next.offset+1).reduce(1, *)
+            let stride = trimmedShape.isEmpty
+                ? 0 : trimmedShape.dropFirst(next.offset+1).reduce(1, *)
             return acc + next.element * stride
         })
     }
@@ -144,7 +146,8 @@ extension TensorIndex : Strideable {
     ///
     /// - Complexity: O(1).
     public func distance(to other: TensorIndex) -> Int {
-        precondition(count == other.count, "Indices are not in the same dimension")
+        precondition(count == other.count,
+                     "Indices are not in the same dimension")
         guard let otherLast = other.last, let selfLast = last else { return 0 }
         return otherLast - selfLast
     }
