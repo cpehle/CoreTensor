@@ -244,6 +244,11 @@ public extension TensorShape {
         return TensorShape(newDims)
     }
 
+    /// Dropping 1-paddings, if any
+    func droppingPaddings() -> TensorShape {
+        return TensorShape(filter { $0 != 1 })
+    }
+
     /// Dropping 1-paddings from higher dimensions, if any
     func droppingHigherPaddings() -> TensorShape {
         // Would use `drop(while:)` in Swift 3.1
