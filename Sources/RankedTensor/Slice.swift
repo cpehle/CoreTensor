@@ -83,8 +83,7 @@ public extension TensorSlice {
 
 public extension TensorSlice where Shape == Shape1D {
     /// Initialize a vector from units
-    init<C: Collection>(_ units: C)
-        where C.Element == UnitType, C.IndexDistance == Int {
+    init<C: Collection>(_ units: C) where C.Element == UnitType {
         self.init(shape: (UInt(units.count)), units: units)
     }
 }

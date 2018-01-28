@@ -22,8 +22,7 @@ public protocol ShapedArrayProtocol : RandomAccessCollection
     associatedtype UnitType
     associatedtype UnitSequenceType: RandomAccessCollection
         where UnitSequenceType.Element == UnitType,
-              UnitSequenceType.Index == Int,
-              UnitSequenceType.IndexDistance == Int
+              UnitSequenceType.Index == Int
     associatedtype BaseForm : ShapedArrayProtocol
         where UnitType == BaseForm.UnitType,
               Shape == BaseForm.Shape
@@ -31,7 +30,7 @@ public protocol ShapedArrayProtocol : RandomAccessCollection
     var shape: Shape { get }
     var dynamicShape: TensorShape { get }
     var units: UnitSequenceType { get }
-    var unitCountPerElement: IndexDistance { get }
+    var unitCountPerElement: Int { get }
     init(shape: Shape, repeating repeatedValue: UnitType)
     subscript(index: Index) -> Element { get }
     func withUnsafeBufferPointer<Result>(
